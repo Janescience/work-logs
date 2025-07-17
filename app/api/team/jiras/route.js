@@ -6,6 +6,7 @@ import dbConnect from '@/lib/mongodb';
 import Team from '@/models/team.model';
 import User from '@/models/user.model';
 import Jira from '@/models/jira.model';
+import DailyLog from '@/models/dailyLog.model';
 
 export async function GET(req) {
   try {
