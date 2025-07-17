@@ -1,0 +1,11 @@
+node_modules
+target
+dist
+.cache
+.vscode
+.DS_Store
+.idea
+.next
+yarn-error.log
+npm-debug.log
+.env.local

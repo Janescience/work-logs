@@ -1,0 +1,103 @@
+/* app/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
+}
+
+.accordion {
+  @apply border border-gray-200 rounded dark:border-gray-700;
+}
+
+.accordion-item {
+  @apply border-b border-gray-200 dark:border-gray-700;
+}
+
+.accordion-header button {
+  @apply w-full text-left py-2 px-3 font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100;
+  border: none;
+  cursor: pointer;
+}
+
+.accordion-body {
+  @apply p-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100;
+}
+
+.service-tag {
+  @apply ml-2 px-2 py-1 rounded-md text-xs font-semibold text-white;
+}
+
+.log-option-tag {
+  @apply ml-1 px-1 py-0.5 rounded-full text-xs font-semibold text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-200;
+}
+
+/* Style Link ใน Dark Mode (ถ้ามี) */
+a {
+  @apply text-blue-500 dark:text-blue-400;
+}
+
+/* Style Button ใน Dark Mode */
+button {
+  @apply focus:outline-none;
+}
+
+
+
+/* AddLogForm (ถ้ามี) */
+.add-log-form {
+  @apply bg-white dark:bg-gray-800 p-4 rounded shadow-md mt-4;
+}
+
+.add-log-form label {
+  @apply block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2;
+}
+
+.add-log-form input[type="text"],
+.add-log-form input[type="number"],
+.add-log-form textarea,
+.add-log-form select {
+  @apply shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none  bg-gray-100 dark:bg-gray-700;
+}
+
+.add-log-form button[type="submit"] {
+  @apply bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none ;
+}
+
+.add-log-form button[type="button"] {
+  @apply bg-gray-300 hover:bg-gray-400 text-gray-700 font-bold py-2 px-4 rounded focus:outline-none  ml-2 dark:bg-gray-600 dark:text-gray-200;
+}
+
+/* AddJiraModal (ถ้ามี) */
+.add-jira-modal {
+  @apply fixed z-10 inset-0 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center;
+}
+
+.add-jira-modal-content {
+  @apply bg-white dark:bg-gray-800 p-6 rounded shadow-xl w-full max-w-md;
+}
+
+.add-jira-modal-content label {
+  @apply block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2;
+}
+
+.add-jira-modal-content input[type="text"],
+.add-jira-modal-content input[type="number"],
+.add-jira-modal-content select {
+  @apply shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none  bg-gray-100 dark:bg-gray-700;
+}
+
+.add-jira-modal-content button {
+  @apply bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none  mt-4;
+}
+
+.add-jira-modal-content .close-button {
+  @apply absolute top-2 right-2 text-gray-500 hover:text-gray-700 cursor-pointer dark:text-gray-300 dark:hover:text-gray-100;
+}
+
+.one-line-ellipsis {
+  white-space: nowrap; /* บังคับให้อยู่ในบรรทัดเดียว */
+  overflow: hidden;     /* ซ่อนส่วนที่เกิน */
+  text-overflow: ellipsis; /* แสดง ... สำหรับส่วนที่ถูกซ่อน */
+}
