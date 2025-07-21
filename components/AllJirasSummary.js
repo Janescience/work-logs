@@ -176,16 +176,17 @@ const AllJirasSummary = ({ allJiras, fetchJiras }) => {
   }, [summarizedJiras, externalStatuses]);
 
   return (
-    <div className="mb-12 border-b border-gray-200">
+    <div className="border border-gray-300 p-4">
       <button
         className="w-full flex items-center justify-between py-4 text-left hover:bg-gray-50 transition-colors duration-200"
         type="button"
         onClick={toggleCollapse}
       >
-        <h2 className="text-xl font-light text-black">Tasks Summary</h2>
+        <h2 className="text-xl font-light text-black">Logs Summary</h2>
+
         <FontAwesomeIcon
           icon={isCollapsed ? faChevronDown : faChevronUp}
-          className="text-sm text-gray-400"
+          className="text-sm text-black"
         />
       </button>
       
@@ -206,7 +207,7 @@ const AllJirasSummary = ({ allJiras, fetchJiras }) => {
               </thead>
               <tbody>
                 {summarizedJirasWithStatus.map((jira, index) => {
-                  const serviceInfo = services.find(s => s.name === jira.serviceName);
+                  const serviceInfo = jira.serviceName;
 
                   return (
                     <tr 

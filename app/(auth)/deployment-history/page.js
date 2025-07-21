@@ -5,7 +5,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronDown, faChevronUp, faDatabase, faServer, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import DetailModal from '@/components/DetailModal'; // Import DetailModal
 import { formatDate } from '@/utils/dateUtils'; // Import formatDate utility
-import { services } from '@/data/config'; // Import services config
 import useJiras from '@/hooks/useJiras'; // Import useJiras hook
 import { useSession } from 'next-auth/react'; // Import useSession
 import { useRouter } from 'next/navigation'; // Import useRouter
@@ -31,7 +30,7 @@ const DeploymentJourney = ({ allJiras }) => {
 
       if (currentJiraDeploymentLogs.length > 0) {
         if (!groupedByJiraNumber[jiraNumberString]) {
-          const serviceInfo = services.find(s => s.name === jira.serviceName);
+          const serviceInfo = jira.serviceName;
 
           groupedByJiraNumber[jiraNumberString] = {
             jiraInfo: {
@@ -40,7 +39,7 @@ const DeploymentJourney = ({ allJiras }) => {
               description: jira.description,
               environment: jira.environment,
               serviceName: jira.serviceName,
-              serviceColorCode: serviceInfo?.color_code || '#ccc',
+              serviceColorCode: '#ccc',
               jiraStatus: jira.jiraStatus,
               actualStatus: jira.actualStatus,
             },

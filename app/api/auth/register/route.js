@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
 export async function POST(req) {
     await connectMongo();
     const data = await req.json();
-    const { username, password, email, name, phone } = data; // Destructure new fields
+    const { username, password, email, name, phone,type } = data; // Destructure new fields
     // Basic validation
     if (!username || !password || !email || !name) { // name is now required
         return NextResponse.json({ message: 'All fields are required.' }, { status: 400 });
@@ -26,6 +26,7 @@ export async function POST(req) {
             email,
             name,
             phone,
+            type,
             // *** แก้ไขตรงนี้: กำหนด 'roles' เป็น Array แทน 'role' String ***
             roles: ['DEVELOPER'] // Default role(s) for new registrations (e.g., ['developer'])
         });

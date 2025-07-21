@@ -236,7 +236,7 @@ export default function MyJiras({userEmail}) {
   ];
 
   return (
-    <div className="my-4 p-4 bg-white ">
+    <div className="my-4 p-4 bg-white border border-gray-300 ">
       <h2 className="text-xl font-bold  text-black font-light ">All Jira Assigned</h2>
       <p className="text-sm text-gray-600 mb-2 ">Categorized by current status or description keywords.</p>
       

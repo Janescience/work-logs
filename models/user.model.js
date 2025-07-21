@@ -17,12 +17,17 @@ const UserSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
-        name: { 
+    name: { 
         type: String,
         required: true,
     },
     phone: {
         type: String,
+    },
+    type: { 
+        type: String, 
+        enum: ['Non-Core', 'Core'], 
+        default: 'Non-Core' 
     },
     roles: { // เก็บ Array ของ Role เช่น ['developer', 'admin']
         type: [String], // Array of Strings

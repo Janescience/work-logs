@@ -228,7 +228,7 @@ export default function DailyLogsPage() {
 
   if (isInitialLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-white">
+      <div className="flex justify-center items-center min-h-screen bg-white text-black">
         <FontAwesomeIcon icon={faSpinner} spin size="2x" className="text-black mr-2" /> Daily Logs Loading...
       </div>
     );
@@ -305,7 +305,7 @@ export default function DailyLogsPage() {
         />
 
         {/* Work Log Accordion */}
-        <div className="mt-8">
+        <div className="mb-6">
           <WorkLogAccordion
             currentView={currentView}
             grouped={grouped}

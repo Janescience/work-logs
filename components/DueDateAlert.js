@@ -38,7 +38,7 @@ const DueDateAlert = ({ allJiras }) => {
   }
 
   return (
-    <div className="mb-4 bg-white p-4">
+    <div className="mb-4 bg-white p-4 border border-gray-300">
       <h2 className="text-xl font-bold mb-2 text-black flex items-center font-light">
         Deadline Alert
       </h2>

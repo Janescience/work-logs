@@ -88,6 +88,32 @@ export default function Sidebar() {
                     </div>
                 ))}
 
+                {session?.user?.roles?.includes('IT LEAD') && (
+                    <div className="mb-6">
+                        <h3 className="uppercase font-light text-gray-400 mb-2 flex items-center">
+                            <FontAwesomeIcon icon={faUserShield} className="mr-2 text-xs" />
+                            IT Lead
+                        </h3>
+                        <ul className="space-y-2">
+                            <li>
+                                <Link
+                                    href="/it-lead"
+                                    className={`
+                                        flex items-center p-2 rounded-lg transition duration-150 ease-in-out
+                                        text-black dark:text-white
+                                        ${isActive('/it-lead')
+                                            ? 'bg-gray-200 font-semibold dark:bg-gray-800'
+                                            : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                                        }
+                                    `}
+                                >
+                                    <span className="text-xs whitespace-nowrap">Month Summary</span>
+                                </Link>
+                            </li>
+                        </ul>
+                    </div>
+                )}
+
                 {session?.user?.roles?.includes('TEAM LEAD') && (
                     <div className="mb-6">
                         <h3 className="uppercase font-light text-gray-400 mb-2 flex items-center"> {/* Adjusted text color for light theme */}

@@ -1,4 +1,4 @@
-// app/my-team/page.js
+// app/(auth)/team/page.js
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -6,16 +6,15 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
-  faUsers, faSpinner, faUserCheck, faEdit, faTrash, faSave, 
-  faChevronDown, faChevronUp, faClock, faListCheck, faCalendarDays 
+  faUsers, faSpinner, faEdit, faTrash, 
+  faChevronDown, faChevronUp
 } from '@fortawesome/free-solid-svg-icons';
 import MyJiras from '@/components/MyJiras';
 import WorkLogCalendar from '@/components/WorkCalendar';
 import { toast } from 'react-toastify';
-import TeamSummary from '@/components/TeamSummary'; // *** 1. IMPORT COMPONENT ใหม่ ***
-import TeamRetrospective from '@/components/TeamRetrospective'; // 1. IMPORT COMPONENT ใหม่
+import TeamSummary from '@/components/TeamSummary';
+import TeamRetrospective from '@/components/TeamRetrospective';
 
-// ... (ส่วนของ getAvatarUrl, getWorkingDaysInMonth, calculateMonthlyHours, countActiveJiras ไม่เปลี่ยนแปลง) ...
 const getAvatarUrl = (username) => {
   if (!username) return 'https://placehold.co/32x32/cccccc/ffffff?text=NA';
   return `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(username)}`;
@@ -166,8 +165,8 @@ export default function MyTeamPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-white p-6 text-black">
+      <div className="mx-auto">
         <div className="text-center mb-6">
           <h1 className="text-4xl font-light text-black mb-4">
             {team ? team.teamName : 'My Team'}
@@ -175,19 +174,14 @@ export default function MyTeamPage() {
           <div className="w-16 h-px bg-black mx-auto"></div>
         </div>
 
-        {/* *** 2. เพิ่ม Section TeamSummary ที่นี่ *** */}
-        <div className="mb-8">
-          {team && Object.keys(teamData).length > 0 && (
-            <>
-              <TeamSummary teamData={teamData} />
-              <TeamRetrospective teamData={teamData} /> 
-            </>
-            
-          )}
-        </div>
+        {team && Object.keys(teamData).length > 0 && (
+          <div className="mb-8 space-y-6">
+            <TeamSummary teamData={teamData} />
+            <TeamRetrospective teamData={teamData} /> 
+          </div>
+        )}
         
-
-        <div className="flex gap-4 mb-6">
+        <div className="flex gap-4 mb-6 pb-6 border-b border-gray-200">
           {!team ? (
             <button
               onClick={() => setIsModalOpen(true)}
@@ -220,8 +214,6 @@ export default function MyTeamPage() {
           )}
         </div>
 
-
-        {/* Team Data Display */}
         {loadingData && (
           <div className="text-center py-8">
             <FontAwesomeIcon icon={faSpinner} spin className="text-3xl text-black mb-4" />
@@ -230,59 +222,53 @@ export default function MyTeamPage() {
         )}
 
         {!loadingData && Object.keys(teamData).length > 0 && (
-          <div className="space-y-2">
-            {Object.values(teamData).map((userData) => {
+          <div className="border-2 border-black rounded-lg">
+            {Object.values(teamData).map((userData, index) => {
               const { memberInfo, jiras } = userData;
-              if (!memberInfo) return null; // Add a guard clause
-              const isCollapsed = collapsedMembers[memberInfo.userId] !== false; // Default to true
+              if (!memberInfo) return null;
+              const isCollapsed = collapsedMembers[memberInfo.userId] !== false;
               
               return (
-                <div key={memberInfo.userId} className="border border-gray-200 rounded-lg overflow-hidden">
+                <div key={memberInfo.userId} className={`${index > 0 ? 'border-t border-gray-200' : ''}`}>
                   <div 
-                    className="bg-gray-50 px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
                     onClick={() => toggleMemberCollapse(memberInfo.userId)}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <img 
-                          src={getAvatarUrl(memberInfo.username)} 
-                          alt={memberInfo.username}
-                          className="w-10 h-10 rounded-full"
-                        />
-                        <div>
-                          <h3 className="font-medium text-black">
-                            {memberInfo.username.toUpperCase()}
-                          </h3>
-                          <p className="text-sm text-gray-600">{memberInfo.email}</p>
-                        </div>
+                    <div className="flex items-center gap-4">
+                      <img 
+                        src={getAvatarUrl(memberInfo.username)} 
+                        alt={memberInfo.username}
+                        className="w-10 h-10 rounded-full"
+                      />
+                      <div>
+                        <h3 className="font-semibold text-black">
+                          {memberInfo.username.toUpperCase()}
+                        </h3>
+                        <p className="text-sm text-gray-500">{memberInfo.email}</p>
                       </div>
-                      <div className="flex items-center gap-4 text-gray-400 text-sm">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveMember(memberInfo.userId);
-                          }}
-                          title="Remove from team"
-                          className="text-gray-400 hover:text-red-500"
-                        >
-                          <FontAwesomeIcon icon={faTrash} />
-                        </button>
-                        <FontAwesomeIcon 
-                          icon={isCollapsed ? faChevronDown : faChevronUp} 
-                          className="text-gray-500"
-                        />
-                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 text-gray-400 text-sm">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveMember(memberInfo.userId);
+                        }}
+                        title="Remove from team"
+                        className="text-gray-400 hover:text-red-500"
+                      >
+                        <FontAwesomeIcon icon={faTrash} />
+                      </button>
+                      <FontAwesomeIcon 
+                        icon={isCollapsed ? faChevronDown : faChevronUp} 
+                        className="text-gray-500"
+                      />
                     </div>
                   </div>
                   {!isCollapsed && (
-                    <div className="p-6 border-t border-gray-200">
+                    <div className="p-4 lg:p-6 border-t border-gray-100 bg-gray-50">
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div>
-                          <MyJiras userEmail={memberInfo.email} userName={memberInfo.username} />
-                        </div>
-                        <div>
-                          <WorkLogCalendar allJiras={jiras} />
-                        </div>
+                        <MyJiras userEmail={memberInfo.email} userName={memberInfo.username} />
+                        <WorkLogCalendar allJiras={jiras} />
                       </div>
                     </div>
                   )}
@@ -292,7 +278,6 @@ export default function MyTeamPage() {
           </div>
         )}
 
-        {/* Team Setup/Edit Modal */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto">
@@ -300,38 +285,16 @@ export default function MyTeamPage() {
                 {isEditMode ? 'Edit Team' : 'Create Team'}
               </h2>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Team Name
-                </label>
-                <input
-                  type="text"
-                  value={teamName}
-                  onChange={(e) => setTeamName(e.target.value)}
-                  className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:ring-black focus:border-black"
-                  placeholder="Enter team name"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Team Name</label>
+                <input type="text" value={teamName} onChange={(e) => setTeamName(e.target.value)} className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:ring-black focus:border-black" placeholder="Enter team name" />
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Team Members
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Select Team Members</label>
                 <div className="space-y-2 max-h-80 overflow-y-auto">
                   {availableMembers.map(member => (
-                    <label
-                      key={member._id}
-                      className="flex items-center p-3 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedMembers.includes(member._id)}
-                        onChange={() => handleMemberSelect(member._id)}
-                        className="mr-3"
-                      />
-                      <img 
-                        src={getAvatarUrl(member.username)} 
-                        alt={member.username}
-                        className="w-8 h-8 rounded-full mr-3"
-                      />
+                    <label key={member._id} className="flex items-center p-3 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                      <input type="checkbox" checked={selectedMembers.includes(member._id)} onChange={() => handleMemberSelect(member._id)} className="mr-3" />
+                      <img src={getAvatarUrl(member.username)} alt={member.username} className="w-8 h-8 rounded-full mr-3" />
                       <div className="flex-1">
                         <div className="text-sm font-medium text-black">{member.username.toUpperCase()}</div>
                         <div className="text-sm text-gray-600">{member.email}</div>
@@ -341,30 +304,8 @@ export default function MyTeamPage() {
                 </div>
               </div>
               <div className="flex justify-end space-x-4">
-                <button
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setIsEditMode(false);
-                    if (team) {
-                      setTeamName(team.teamName);
-                      const memberIds = team.memberIds || team.members.map(m => m._id || m.userId);
-                      setSelectedMembers(memberIds);
-                    } else {
-                      setTeamName('');
-                      setSelectedMembers([]);
-                    }
-                  }}
-                  className="bg-gray-200 hover:bg-gray-300 text-black py-2 px-4 rounded"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveTeam}
-                  className="bg-black hover:bg-gray-800 text-white py-2 px-4 rounded flex items-center gap-2"
-                  disabled={!teamName.trim() || selectedMembers.length === 0}
-                >
-                  {isEditMode ? 'Update Team' : 'Create Team'} ({selectedMembers.length})
-                </button>
+                <button onClick={() => { setIsModalOpen(false); setIsEditMode(false); if (team) { setTeamName(team.teamName); const memberIds = team.memberIds || team.members.map(m => m._id || m.userId); setSelectedMembers(memberIds); } else { setTeamName(''); setSelectedMembers([]); } }} className="bg-gray-200 hover:bg-gray-300 text-black py-2 px-4 rounded">Cancel</button>
+                <button onClick={handleSaveTeam} className="bg-black hover:bg-gray-800 text-white py-2 px-4 rounded flex items-center gap-2" disabled={!teamName.trim() || selectedMembers.length === 0}>{isEditMode ? 'Update Team' : 'Create Team'} ({selectedMembers.length})</button>
               </div>
             </div>
           </div>

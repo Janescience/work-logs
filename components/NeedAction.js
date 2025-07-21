@@ -53,7 +53,7 @@ const NeedAction = ({ allJiras }) => {
 
   return (
     // Main container with border, white background, and padding
-    <div className="mb-4 border-1 border-gray-500 bg-white p-4">
+    <div className="mb-4 border border-gray-300 bg-white p-4 ">
       {/* Header for Deployment Schedule */}
       <h2 className="text-xl font-bold mb-4 text-black flex items-center font-light">
         Deployment Schedule

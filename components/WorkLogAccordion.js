@@ -60,11 +60,12 @@ function WorkLogAccordion({
   );
 
   return (
-    <div className="accordion p-5 border-gray-100 rounded-lg overflow-hidden" id="workLogAccordion">
+    <div className="p-4 border border-gray-300  overflow-hidden" id="workLogAccordion">
       {/* --- Project View --- */}
       {currentView === 'project' && Object.entries(grouped).map(([year, months]) => (
         <div key={year} className=" bg-white">
-          <button className="w-full text-left px-3 py-2 font-medium bg-white hover:bg-gray-100 text-black" type="button" onClick={() => toggleYear(year)}>
+           <h2 className="text-xl font-bold  text-black font-light ">Logs</h2>
+          <button className="w-full text-left px-3 py-3  bg-white hover:bg-gray-100 text-black" type="button" onClick={() => toggleYear(year)}>
             <span className="flex items-center justify-between">
               <span>{year}</span>
               <FontAwesomeIcon icon={expandedYear[year] ? faChevronUp : faChevronDown} className="text-black" />
@@ -80,13 +81,13 @@ function WorkLogAccordion({
                       <span className="flex items-center justify-between">
                         <span className="flex items-center gap-3 ml-5">
                           {month}
-                          <span className="px-2 py-1 text-xs text-black bg-white border border-gray-300">
+                          <span className="px-2 py-1 text-sm text-gray-500  bg-white border border-gray-300">
                             Used: {monthUsedHours[monthKey] || 0}
                           </span>
-                          <span className="px-2 py-1 text-xs text-black bg-white border border-gray-300">
+                          <span className="px-2 py-1 text-sm text-gray-500  bg-white border border-gray-300">
                             Capacity: {monthCapacities[monthKey] || 0}
                           </span>
-                          <span className="px-2 py-1 text-xs text-black bg-white border border-gray-300">
+                          <span className="px-2 py-1 text-sm text-gray-500  bg-white border border-gray-300">
                             Gap: {(monthCapacities[monthKey] - (monthUsedHours[monthKey] || 0)) || 0}
                           </span>
                         </span>

@@ -285,6 +285,9 @@ export default function MasterDataProjectsPage() {
                                     >
                                         <option value="Project">Project</option>
                                         <option value="Product">Product</option>
+                                        <option value="BAU">BAU</option>
+                                        <option value="Other">Other</option>
+
                                     </select>
                                 </div>
 

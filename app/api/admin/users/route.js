@@ -2,29 +2,44 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route'; // Adjust path as needed
-import connectMongo from '@/lib/mongodb';
+import dbConnect from '@/lib/mongodb';
 import User from '@/models/user.model';
+import Team from '@/models/team.model';
 
 export async function GET(req) {
     try {
-        await connectMongo();
+        await dbConnect();
         const session = await getServerSession(authOptions);
 
-        // Check if user is authenticated and is an admin
-        if (!session || !session.user || !session.user.roles || !session.user.roles.includes('ADMIN')) {
+        if (!session || !session.user || !session.user.roles.includes('ADMIN')) {
             return NextResponse.json({ message: 'Unauthorized: Admin access required' }, { status: 403 });
         }
 
-        // Fetch all users, excluding the password field for security
-        const users = await User.find({}, { password: 0 }).sort({ createdAt: 1 }); // Sort by creation date
+        // 2. Fetch all users and all teams in parallel
+        const [users, teams] = await Promise.all([
+            User.find({}, { password: 0 }).sort({ createdAt: -1 }).lean(),
+            Team.find({}).lean()
+        ]);
 
-        // Format created date for better readability if needed
+        // 3. Create a map for quick team lookup
+        const userTeamMap = {};
+        teams.forEach(team => {
+            team.memberIds.forEach(memberId => {
+                userTeamMap[memberId] = team.teamName;
+            });
+        });
+
+        // 4. Format user data and include all required fields
         const formattedUsers = users.map(user => ({
             id: user._id.toString(),
             username: user.username,
             email: user.email,
-            roles: user.roles, // Ensure 'roles' is returned as an array
-            createdAt: user.createdAt.toISOString(), // Convert Date to ISO string
+            roles: user.roles,
+            type: user.type || 'Non-Core', // Include type
+            name: user.name,               // Include name
+            phone: user.phone || '-',      // Include phone
+            teamName: userTeamMap[user._id.toString()] || 'N/A', // Include team name from map
+            createdAt: user.createdAt.toISOString(),
         }));
 
         return NextResponse.json({ users: formattedUsers }, { status: 200 });

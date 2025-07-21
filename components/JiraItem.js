@@ -6,7 +6,6 @@ import DetailModal from './DetailModal'; // Import the modal component
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faDatabase, faServer, faTrash,faClose,faPencil,faSave,faTimes,faShareSquare } from '@fortawesome/free-solid-svg-icons';
 import EditJiraModal from '@/components/EditJiraModal';
-import { services } from '@/data/config'
 import { toast } from 'react-toastify';
 import DeployModal from '@/components/DeployModal'; // 1. Import DeployModal
 
@@ -36,7 +35,6 @@ const JiraItem = ({
   const [jiraTotalHours, setJiraTotalHours] = useState(0);
   const [showEditJiraModal, setShowEditJiraModal] = useState(false);
   const [editingJira, setEditingJira] = useState(null);
-  const service = services.find(s => s.name === jira.serviceName);
   const [editingLogId, setEditingLogId] = useState(null);
   const [editedLogData, setEditedLogData] = useState({});
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false); // 3. เพิ่ม State สำหรับ Modal

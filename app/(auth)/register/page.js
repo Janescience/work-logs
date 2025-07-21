@@ -13,6 +13,7 @@ export default function RegisterPage() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
+    const [userType, setUserType] = useState('Non-Core');
     const router = useRouter();
 
     const handleSubmit = async (e) => {
@@ -27,7 +28,7 @@ export default function RegisterPage() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ username, password, email, name, phone }), 
+                body: JSON.stringify({ username, password, email, name, phone, type: userType }),
             });
 
             const data = await res.json();
@@ -122,6 +123,18 @@ export default function RegisterPage() {
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
                         />
+                    </div>
+
+                    <div>
+                        <select
+                            id="userType"
+                            className="w-full px-0 py-3 text-black bg-transparent border-0 border-b border-gray-300 focus:border-black focus:outline-none"
+                            value={userType}
+                            onChange={(e) => setUserType(e.target.value)}
+                        >
+                            <option value="Non-Core">Non-Core</option>
+                            <option value="Core">Core</option>
+                        </select>
                     </div>
 
                     {/* Messages */}
