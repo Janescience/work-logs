@@ -81,7 +81,7 @@ export async function PUT(req, { params }) {
     const updateFields = {};
     if (updatedLogData.logDate) updateFields['logDate'] = new Date(updatedLogData.logDate);
     if (typeof updatedLogData.taskDescription === 'string' && updatedLogData.taskDescription !== "") updateFields['taskDescription'] = updatedLogData.taskDescription;
-    if (typeof updatedLogData.timeSpent === 'number') updateFields['timeSpent'] = updatedLogData.timeSpent;
+    updateFields['timeSpent'] = updatedLogData.timeSpent;
     if (typeof updatedLogData.envDetail === 'string' && updatedLogData.envDetail !== "") updateFields['envDetail'] = updatedLogData.envDetail;
     if (typeof updatedLogData.sqlDetail === 'string' && updatedLogData.sqlDetail !== "") updateFields['sqlDetail'] = updatedLogData.sqlDetail;
 
