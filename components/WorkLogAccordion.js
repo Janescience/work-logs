@@ -64,7 +64,6 @@ function WorkLogAccordion({
       {/* --- Project View --- */}
       {currentView === 'project' && Object.entries(grouped).map(([year, months]) => (
         <div key={year} className=" bg-white">
-           <h2 className="text-xl font-bold  text-black font-light ">Logs</h2>
           <button className="w-full text-left px-3 py-3  bg-white hover:bg-gray-100 text-black" type="button" onClick={() => toggleYear(year)}>
             <span className="flex items-center justify-between">
               <span>{year}</span>

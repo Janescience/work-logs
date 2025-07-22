@@ -16,7 +16,7 @@ export async function GET(req) {
         }
 
         // *** ดึง Project ทั้งหมด ไม่ต้องกรองด้วย userId ***
-        const projects = await Project.find({}).sort({ createdAt: 1 });
+        const projects = await Project.find({}).sort({ type: 1,name:1 });
 
         return NextResponse.json({ projects }, { status: 200 });
     } catch (error) {

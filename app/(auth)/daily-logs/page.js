@@ -8,6 +8,7 @@ import AllJirasSummary from '@/components/AllJirasSummary';
 import WorkLogAccordion from '@/components/WorkLogAccordion';
 import ExportOptions from '@/components/ExportOptions';
 import MyJiras from '@/components/MyJiras';
+import WorkCalendar from '@/components/WorkCalendar';
 
 import useJiras from '@/hooks/useJiras';
 import useGroupedJiras from '@/hooks/useGroupedJiras';
@@ -251,6 +252,11 @@ export default function DailyLogsPage() {
           <h1 className="text-4xl font-light text-black mb-4">Daily Logs</h1>
           <div className="w-16 h-px bg-black mx-auto"></div>
         </div>
+
+                {/* Summary Section */}
+        <div className="mb-6">
+          <WorkCalendar allJiras={allJiras} />
+        </div>
         
         {/* Actions Bar */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 pb-6 border-b border-gray-200">
@@ -327,11 +333,7 @@ export default function DailyLogsPage() {
           />
         </div>
 
-        {/* Summary Section */}
-        <div className="mb-6">
-          {/* *** Pass statuses to Summary component *** */}
-          <AllJirasSummary allJiras={allJiras} fetchJiras={fetchJiras} externalStatuses={externalStatuses} />
-        </div>
+
 
         {/* My Jiras Section */}
         <div className="mb-6">

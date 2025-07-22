@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import * as XLSX from 'xlsx';
 import Jira from '@/models/jira.model';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../../auth/[...nextauth]/route';
+
 import Project from '@/models/project.model'; 
 import Service from '@/models/service.model'; 
 import DailyLog from '@/models/dailyLog.model'; // Import DailyLog explicitly
@@ -15,10 +18,15 @@ const JIRA_API_TOKEN = process.env.JIRA_API_TOKEN; // Get from env
 export async function GET(req) {
   try {
     await dbConnect();
+    const session = await getServerSession(authOptions);
 
     const { searchParams } = new URL(req.url);
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
+
+    let queryUserId = session.user.id;
+
+    const jiraQuery = { userId: queryUserId };
 
     let dateFilter = {};
     if (startDateParam && endDateParam) {
@@ -34,8 +42,10 @@ export async function GET(req) {
 
     // Fetch Jiras and their daily logs
     // Add populate for service if needed for service.color_code logic (if you decide to use it here)
-    const jiras = await Jira.find({}).populate('dailyLogs').lean();
-
+    const jiras = await Jira.find(jiraQuery).populate({
+        path: 'dailyLogs',
+        match: dateFilter, // Apply date filter directly on populated logs
+    }).lean();
     // --- Fetch Live Jira Statuses ---
     const jiraNumbersToFetch = jiras
       .map(jira => jira.jiraNumber)

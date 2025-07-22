@@ -33,9 +33,7 @@ const DueDateAlert = ({ allJiras }) => {
     setDueSoonJiras(alertsWithDaysRemaining);
   }, [allJiras]);
 
-  if (dueSoonJiras.length === 0) {
-    return null;
-  }
+
 
   return (
     <div className="mb-4 bg-white p-4 border border-gray-300">
@@ -61,6 +59,12 @@ const DueDateAlert = ({ allJiras }) => {
             <span className="flex-grow text-black">{jira.description}</span>
           </li>
         ))}
+        {/* Message when no actions are needed */}
+        {dueSoonJiras.length === 0  && (
+          <p className="text-gray-600 text-sm p-4 text-center border border-gray-300 bg-gray-50">
+            No deadline alert for today or future dates.
+          </p>
+        )}
       </ul>
     </div>
   );

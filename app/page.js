@@ -45,15 +45,6 @@ export default function Home() {
           <div className="w-16 h-px bg-black mx-auto"></div> {/* Divider */}
         </div>
         
-        {/* My Jiras Section */}
-        <div className="mb-6">
-          <MyJiras userEmail={userEmail} /> {/* Assuming MyJiras might need allJiras as a prop now, if it didn't fetch internally */}
-        </div>
-
-        <div className="mb-6">
-          <WorkCalendar allJiras={allJiras} />
-        </div>
-
         {/* Need Action Section */}
         <div className="mb-6">
           <NeedAction allJiras={allJiras} />

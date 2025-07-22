@@ -222,7 +222,7 @@ export default function MyTeamPage() {
         )}
 
         {!loadingData && Object.keys(teamData).length > 0 && (
-          <div className="border-2 border-black rounded-lg">
+          <div className="border border-gray-300">
             {Object.values(teamData).map((userData, index) => {
               const { memberInfo, jiras } = userData;
               if (!memberInfo) return null;
@@ -266,9 +266,9 @@ export default function MyTeamPage() {
                   </div>
                   {!isCollapsed && (
                     <div className="p-4 lg:p-6 border-t border-gray-100 bg-gray-50">
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <MyJiras userEmail={memberInfo.email} userName={memberInfo.username} />
+                      <div className="grid grid-cols-1 gap-6">
                         <WorkLogCalendar allJiras={jiras} />
+                        <MyJiras userEmail={memberInfo.email} userName={memberInfo.username} />
                       </div>
                     </div>
                   )}
