@@ -6,6 +6,7 @@ import { Inter } from 'next/font/google';
 import { usePathname } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import FloatingQuickActions from '@/components/FloatingQuickActions'; // เพิ่มบรรทัดนี้
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -19,6 +20,7 @@ export default function Providers({ children }) {
     <SessionProvider>
       <div className={inter.className}>
         
+        <FloatingQuickActions />
 
         {/* Conditionally render sidebar and main content layout */}
         {showSidebar ? (

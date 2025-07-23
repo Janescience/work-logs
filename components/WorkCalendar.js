@@ -158,7 +158,7 @@ export default function WorkCalendar({ allJiras }) {
                     <button onClick={goToPreviousMonth} className="p-1 hover:bg-gray-100 rounded-full text-black">
                         <FontAwesomeIcon icon={faChevronLeft} />
                     </button>
-                    <h3 className="font-semibold text-black w-40 text-center">
+                    <h3 className="text-lg  text-black w-40 text-center">
                         {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                     </h3>
                     <button onClick={goToNextMonth} className="p-2 hover:bg-gray-100 rounded-full text-black">
