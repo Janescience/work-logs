@@ -10,6 +10,7 @@ import {
 import EditJiraModal from '@/components/EditJiraModal';
 import { toast } from 'react-toastify';
 import DeployModal from '@/components/DeployModal';
+import DetailModal from '@/components/DetailModal'; // Import the modal component
 import { formatDate } from '@/utils/dateUtils';
 
 const JiraItem = ({ 
@@ -128,6 +129,23 @@ const JiraItem = ({
     return formatDate(date);
   };
 
+  const truncateDescription = (description) => {
+    if (!description) return '';
+    return description.length > 120 ? `${description.substring(0, 120)}...` : description;
+  };
+
+  const openDetailModal = (type, content) => {
+    setModalDetailType(type);
+    setModalDetailContent(content);
+    setShowDetailModal(true);
+  };
+
+  const closeDetailModal = () => {
+    setShowDetailModal(false);
+    setModalDetailType(null);
+    setModalDetailContent('');
+  };
+
   return (
     <div className="group hover:bg-gray-50 transition-all duration-200">
       {/* Main Row */}
@@ -141,7 +159,25 @@ const JiraItem = ({
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-mono text-sm text-gray-600 whitespace-nowrap">{jira.jiraNumber}</h3>
                   <span className="text-gray-400">•</span>
-                  <h3 className="text-sm font-medium text-gray-900 truncate">{jira.description}</h3>
+                  <h3 className="text-sm font-medium text-gray-900 truncate">{truncateDescription(jira.description)}</h3>
+                  {jira.envDetail && (
+                    <button
+                      onClick={() => openDetailModal('Environment Detail', jira.envDetail)}
+                      className="p-1.5 text-gray-400 hover:text-black hover:bg-gray-50 rounded transition-colors"
+                      title="View Environment Details"
+                    >
+                      <FontAwesomeIcon icon={faServer} size="xs" />
+                    </button>
+                  )}
+                  {jira.sqlDetail && (
+                    <button
+                      onClick={() => openDetailModal('SQL Detail', jira.sqlDetail)}
+                      className="p-1.5 text-gray-400 hover:text-black hover:bg-gray-50 rounded transition-colors"
+                      title="View SQL Details"
+                    >
+                      <FontAwesomeIcon icon={faDatabase} size="xs" />
+                    </button>
+                  )}
                 </div>
                 
                 {/* Meta Info */}
@@ -311,6 +347,15 @@ const JiraItem = ({
           </div>
         )}
       </div>
+
+      {showDetailModal && (
+        <DetailModal
+          isOpen={showDetailModal}
+          onClose={closeDetailModal}
+          title={modalDetailType}
+          content={modalDetailContent}
+        />
+      )}
 
       {/* Deploy Modal */}
       <DeployModal

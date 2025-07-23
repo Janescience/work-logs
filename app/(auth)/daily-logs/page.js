@@ -576,7 +576,7 @@ export default function DailyLogsPage() {
       />
 
       <EditJiraModal
-        show={showEditJiraModal}
+        isOpen={showEditJiraModal}
         onClose={closeEditJiraModal}
         onUpdateJira={handleUpdateJira}
         editingJira={editingJira}

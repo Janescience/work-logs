@@ -47,6 +47,7 @@ export async function POST(request) {
     const savedJira = await newJira.save();
 
     return NextResponse.json({ message: 'Jira added successfully', id: savedJira._id }, { status: 201 });
+    
   } catch (e) {
     console.error(e);
     return NextResponse.json({ message: 'Failed to add Jira' }, { status: 500 });

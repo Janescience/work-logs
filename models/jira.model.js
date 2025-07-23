@@ -13,6 +13,8 @@ const jiraSchema = new mongoose.Schema({
   actualStatus: String,
   relatedJira: String,
   environment:String,
+  envDetail: { type: String },
+  sqlDetail: { type: String },
   dailyLogs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'DailyLog' }],
   userId: {
     type: String, 
