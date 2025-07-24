@@ -330,7 +330,7 @@ export default function DailyLogsPage() {
         deletedJira = deleteOptimisticJira(jiraId);
         toast.success('Task deleted successfully!');
 
-        const response = await fetch(`/api/jiras/${jiraId}`, {
+        const response = await fetch(`/api/jiras?jiraId=${jiraId}`, {
           method: 'DELETE',
         });
 

@@ -71,6 +71,10 @@ export default function Home() {
             
             {/* Due Date Alert Section */}
             <DueDateAlert allJiras={allJiras} />
+
+            <div className="mb-6">
+              <MyJiras userEmail={session.user.email} />
+            </div>
           </div>
 
           {/* Right Column */}

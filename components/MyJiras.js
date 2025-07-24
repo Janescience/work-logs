@@ -1,8 +1,22 @@
+// components/MyJiras.js
 'use client';
 import { useEffect, useState, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheckSquare, faSquare, faSpinner, faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons"; // Added chevron icons
+import { 
+  faCheckSquare, 
+  faSquare, 
+  faSpinner, 
+  faSync,
+  faPlus,
+  faExternalLinkAlt,
+  faExclamationTriangle,
+  faClock,
+  faChevronDown,
+  faChevronUp
+} from "@fortawesome/free-solid-svg-icons";
 import { useSession } from "next-auth/react";
+import { toast } from 'react-toastify';
+import { useRouter } from 'next/navigation';
 
 const formatDate = (dateString) => {
   if (!dateString) return '-';
@@ -10,333 +24,354 @@ const formatDate = (dateString) => {
   return `${d.getDate().toString().padStart(2, '0')}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getFullYear()}`;
 };
 
-// Define the sections and their matching criteria
-const jiraSectionsConfig = [
-  {
-    title: "Need Action",
-    statusMatch: ["intake","fix","awaiting production"],
-    descriptionMatch: [],
-    defaultCollapsed: false // Default to open
-  },
-  {
-    title: "Business & Requirements",
-    statusMatch: ["business","requirement","analysis"],
-    descriptionMatch: [],
-    defaultCollapsed: true // Default to open
-  },
-  {
-    title: "Pending",
-    statusMatch: ["pending"],
-    descriptionMatch: [],
-    defaultCollapsed: true // Default to open
-  },
-  {
-    title: "Design",
-    statusMatch: ["design"],
-    descriptionMatch: [],
-    defaultCollapsed: true
-  },
-  {
-    title: "Develop",
-    statusMatch: ["develop","in progress"],
-    descriptionMatch: [],
-    defaultCollapsed: false
-  },
-  {
-    title: "SIT",
-    statusMatch: ["sit"],
-    descriptionMatch: [], // Added "sit" to descriptionMatch for consistency if needed
-    defaultCollapsed: false
-  },
-  {
-    title: "UAT",
-    statusMatch: ["uat"],
-    descriptionMatch: [], // Added "uat" to descriptionMatch for consistency if needed
-    defaultCollapsed: false
-  },
-  {
-    title: "Production",
-    statusMatch: ["deployed","production"],
-    descriptionMatch: [],
-    defaultCollapsed: true
-  },
-  {
-    title: "Closed",
-    statusMatch: ["closed"],
-    descriptionMatch: [],
-    defaultCollapsed: true // Default to collapsed
-  },
-  {
-    title: "Done",
-    statusMatch: ["done"],
-    descriptionMatch: [],
-    defaultCollapsed: true // Default to collapsed
-  },
-  {
-    title: "Canceled",
-    statusMatch: ["cancel"],
-    descriptionMatch: [],
-    defaultCollapsed: true // Default to collapsed
-  },
-  { // *** NEW: Uncategorized section config ***
-    title: "Uncategorized",
-    statusMatch: [],
-    descriptionMatch: [],
-    defaultCollapsed: true // Default to collapsed
-  }
-];
+// Status priority for sorting
+const statusPriority = {
+  'fix': 1,
+  'awaiting production': 2,
+  'in progress': 3,
+  'develop': 4,
+  'business': 5,
+  'requirement': 6,
+  'analysis': 7,
+  'pending': 8,
+  'sit': 9,
+  'uat': 10,
+  'deployed': 11,
+  'production': 12,
+  'done': 13,
+  'closed': 14,
+  'cancel': 15
+};
 
-export default function MyJiras({userEmail}) {
+export default function MyJiras({ userEmail, compact = false }) {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [issues, setIssues] = useState([]);
   const [internalJiraNumbers, setInternalJiraNumbers] = useState(new Set());
   const [error, setError] = useState(null);
-  // State to manage collapsed/expanded sections
-  const [collapsedSections, setCollapsedSections] = useState(() => {
-    const initialCollapsed = {};
-    jiraSectionsConfig.forEach(section => {
-      initialCollapsed[section.title] = section.defaultCollapsed;
-    });
-    return initialCollapsed;
-  });
+  const [showAll, setShowAll] = useState(false);
+  const [syncStats, setSyncStats] = useState({ new: 0, existing: 0 });
 
-  // Function to toggle collapse state of a section
-  const toggleSectionCollapse = (title) => {
-    setCollapsedSections(prev => ({
-      ...prev,
-      [title]: !prev[title]
-    }));
+  const fetchJiras = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Fetch external JIRAs
+      const externalRes = await fetch(`/api/my-jiras?email=${encodeURIComponent(userEmail)}`);
+      if (!externalRes.ok) {
+        const errorData = await externalRes.json();
+        throw new Error(errorData.error || "Failed to load JIRAs from external API");
+      }
+      const externalData = await externalRes.json();
+
+      // Fetch internal JIRAs
+      const internalRes = await fetch(`/api/jiras`);
+      if (!internalRes.ok) {
+        const errorData = await internalRes.json();
+        throw new Error(errorData.message || "Failed to load internal JIRA numbers");
+      }
+      const internalData = await internalRes.json();
+      
+      setIssues(externalData.issues || []);
+      const jiraNumbersFromInternalData = internalData.jiras ? internalData.jiras.map(jira => jira.jiraNumber) : [];
+      setInternalJiraNumbers(new Set(jiraNumbersFromInternalData));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.email) {
-      const fetchExternalAndInternalJiras = async () => {
-        setLoading(true);
-        setError(null);
-
-        try {
-          const externalRes = await fetch(`/api/my-jiras?email=${encodeURIComponent(userEmail)}`);
-          if (!externalRes.ok) {
-            const errorData = await externalRes.json();
-            throw new Error(errorData.error || "Failed to load Jiras from external API");
-          }
-          const externalData = await externalRes.json();
-
-          const internalRes = await fetch(`/api/jiras`);
-          if (!internalRes.ok) {
-            const errorData = await internalRes.json();
-            throw new Error(errorData.message || "Failed to load internal Jira numbers");
-          }
-          // Corrected line: Assign the result of internalRes.json() to internalData
-          const internalData = await internalRes.json(); 
-          
-          setIssues(externalData.issues || []);
-          const jiraNumbersFromInternalData = internalData.jiras ? internalData.jiras.map(jira => jira.jiraNumber) : [];
-          setInternalJiraNumbers(new Set(jiraNumbersFromInternalData));
-          setLoading(false);
-        } catch (err) {
-          setError(err.message);
-          setLoading(false);
-        }
-      };
-
-      fetchExternalAndInternalJiras();
-    } else if (status === 'unauthenticated') {
-      setLoading(false);
-      setError("Please log in to view your Jiras.");
-      setIssues([]);
-      setInternalJiraNumbers(new Set());
+      fetchJiras();
     }
-  }, []);
+  }, [status, session, userEmail]);
 
-  // Categorize issues into sections
-  const categorizedIssues = useMemo(() => {
-    const categories = jiraSectionsConfig.map(section => ({
-      title: section.title,
-      issues: [],
-      defaultCollapsed: section.defaultCollapsed // Keep defaultCollapsed property
-    }));
+  // Auto-sync untracked JIRAs
+  const syncUntracked = async () => {
+    const untrackedIssues = issues.filter(issue => 
+      !internalJiraNumbers.has(issue.key) && 
+      !['done', 'closed', 'cancel'].includes(issue.fields.status?.name?.toLowerCase())
+    );
 
-    const uncategorizedIssueKeys = new Set(issues.map(issue => issue.key)); // Track all issues initially as uncategorized
+    if (untrackedIssues.length === 0) {
+      toast.info('No untracked JIRAs to sync');
+      return;
+    }
+
+    setSyncing(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const issue of untrackedIssues) {
+      try {
+        const res = await fetch('/api/jiras', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jiraNumber: issue.key,
+            description: issue.fields.summary,
+            projectName: issue.fields.project?.name || 'External JIRA',
+            actualStatus: 'In Progress',
+            assignee: issue.fields.assignee?.displayName || userEmail
+          }),
+        });
+
+        if (res.ok) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      } catch (error) {
+        errorCount++;
+      }
+    }
+
+    setSyncing(false);
+    setSyncStats({ new: successCount, existing: errorCount });
+    
+    if (successCount > 0) {
+      toast.success(`Synced ${successCount} JIRAs successfully!`);
+      fetchJiras(); // Refresh data
+    }
+    if (errorCount > 0) {
+      toast.error(`Failed to sync ${errorCount} JIRAs`);
+    }
+  };
+
+  // Group and sort issues
+  const { activeIssues, completedIssues, untrackedCount } = useMemo(() => {
+    const active = [];
+    const completed = [];
+    let untracked = 0;
 
     issues.forEach(issue => {
-      const statusNameLower = issue.fields.status?.name?.toLowerCase() || '';
-      const summaryLower = issue.fields.summary?.toLowerCase() || '';
-      const descriptionLower = issue.fields.description?.toLowerCase() || '';
+      const statusName = issue.fields.status?.name?.toLowerCase() || '';
+      const isTracked = internalJiraNumbers.has(issue.key);
+      
+      if (!isTracked && !['done', 'closed', 'cancel'].includes(statusName)) {
+        untracked++;
+      }
 
-      let assignedToCategory = false;
-
-      for (const category of categories) {
-        if (category.title === "Uncategorized") continue; // Skip Uncategorized in this loop
-
-        const config = jiraSectionsConfig.find(s => s.title === category.title);
-        if (!config) continue;
-
-        let isMatch = false;
-
-        // Check if statusNameLower contains any of the statusMatch keywords
-        if (config.statusMatch.length > 0) {
-          for (const keyword of config.statusMatch) {
-            if (statusNameLower.includes(keyword)) { // Check if statusNameLower contains the keyword
-              isMatch = true;
-              break;
-            }
-          }
-        }
-
-        // Check description/summary match (if not already matched by status)
-        if (!isMatch && config.descriptionMatch.length > 0) {
-          for (const keyword of config.descriptionMatch) {
-            if (summaryLower.includes(keyword) || descriptionLower.includes(keyword)) {
-              isMatch = true;
-              break;
-            }
-          }
-        }
-
-        if (isMatch) {
-          category.issues.push(issue);
-          uncategorizedIssueKeys.delete(issue.key); // Remove from uncategorized set
-          assignedToCategory = true;
-          break;
-        }
+      if (['done', 'closed', 'cancel'].includes(statusName)) {
+        completed.push(issue);
+      } else {
+        active.push(issue);
       }
     });
 
-    const uncategorizedSection = categories.find(c => c.title === "Uncategorized");
-    if (uncategorizedSection) {
-        issues.forEach(issue => {
-            if (uncategorizedIssueKeys.has(issue.key)) { // If still in the uncategorized set
-                uncategorizedSection.issues.push(issue);
-            }
-        });
-    }
-
-    categories.forEach(category => {
-      category.issues.sort((a, b) => {
-        const dateA = new Date(a.fields.created);
-        const dateB = new Date(b.fields.created);
-        return dateB.getTime() - dateA.getTime();
-      });
+    // Sort by priority
+    active.sort((a, b) => {
+      const priorityA = statusPriority[a.fields.status?.name?.toLowerCase()] || 999;
+      const priorityB = statusPriority[b.fields.status?.name?.toLowerCase()] || 999;
+      return priorityA - priorityB;
     });
 
-    // Filter out categories with no issues
-    return categories.filter(category => category.issues.length > 0);
-  }, [issues]);
+    completed.sort((a, b) => new Date(b.fields.updated) - new Date(a.fields.updated));
 
-  // Columns for the inner tables
-  const tableColumns = [
-    { label: "Jira Key", key: "key" },
-    { label: "Summary", key: "summary" },
-    { label: "Created", key: "created" },
-    { label: "Reporter", key: "reporter" },
-    { label: "Status", key: "status" },
-    { label: "Recorded", key: "recorded" },
-  ];
+    return { activeIssues: active, completedIssues: completed, untrackedCount: untracked };
+  }, [issues, internalJiraNumbers]);
+
+  // Quick add JIRA to tracking
+  const quickAddJira = async (issue) => {
+    try {
+      const res = await fetch('/api/jiras', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jiraNumber: issue.key,
+          description: issue.fields.summary,
+          projectName: issue.fields.project?.name || 'External JIRA',
+          actualStatus: 'In Progress',
+          assignee: issue.fields.assignee?.displayName || userEmail
+        }),
+      });
+
+      if (res.ok) {
+        toast.success(`Added ${issue.key} to tracking!`);
+        fetchJiras();
+      } else {
+        throw new Error('Failed to add JIRA');
+      }
+    } catch (error) {
+      toast.error(`Failed to add ${issue.key}`);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white p-6 border border-gray-300 rounded-lg">
+        <div className="text-center py-4">
+          <FontAwesomeIcon icon={faSpinner} spin className="text-2xl text-black mb-2" />
+          <p className="text-gray-600">Loading JIRAs...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white p-6 border border-gray-300 rounded-lg">
+        <div className="text-red-600 text-center py-4">{error}</div>
+      </div>
+    );
+  }
+
+  const IssueRow = ({ issue, isTracked }) => (
+    <tr className="hover:bg-gray-50 transition-colors">
+      <td className="px-4 py-3 whitespace-nowrap">
+        <a
+          href={`https://generalith.atlassian.net/browse/${issue.key}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-sm text-blue-600 hover:underline flex items-center gap-1"
+        >
+          {issue.key}
+          <FontAwesomeIcon icon={faExternalLinkAlt} className="text-xs" />
+        </a>
+      </td>
+      <td className="px-4 py-3 text-sm text-gray-900">
+        <div className="max-w-xs truncate" title={issue.fields.summary}>
+          {issue.fields.summary}
+        </div>
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap">
+        <span className={`px-2 py-1 text-xs rounded-full ${
+          issue.fields.status?.name?.toLowerCase().includes('done') ? 'bg-green-100 text-green-800' :
+          issue.fields.status?.name?.toLowerCase().includes('progress') ? 'bg-blue-100 text-blue-800' :
+          'bg-gray-100 text-gray-800'
+        }`}>
+          {issue.fields.status?.name || '-'}
+        </span>
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">
+        {formatDate(issue.fields.created)}
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap text-center">
+        {isTracked ? (
+          <FontAwesomeIcon icon={faCheckSquare} className="text-green-600" />
+        ) : (
+          <button
+            onClick={() => quickAddJira(issue)}
+            className="text-gray-400 hover:text-black transition-colors"
+            title="Add to tracking"
+          >
+            <FontAwesomeIcon icon={faPlus} />
+          </button>
+        )}
+      </td>
+    </tr>
+  );
 
   return (
-    <div className="my-4 p-4 bg-white border border-gray-300 ">
-      <h2 className="text-xl font-bold  text-black font-light ">All Jira Assigned</h2>
-      <p className="text-sm text-gray-600 mb-2 ">Categorized by current status or description keywords.</p>
-      
-      {/* Loading states */}
-      {status === 'loading' && (
-        <div className="text-center py-4">
-          <FontAwesomeIcon icon={faSpinner} spin className="text-2xl text-black" />
-          <p className="text-gray-600 mt-2">Loading user session...</p>
-        </div>
-      )}
-      
-      {status === 'unauthenticated' && !loading && (
-        <div className="text-black text-center py-4 border border-black bg-gray-100 p-4">
-          {error || "You must be logged in to view your assigned Jiras."}
-        </div>
-      )}
-      
-      {(status === 'authenticated' && loading) && (
-        <div className="text-center py-4">
-          <FontAwesomeIcon icon={faSpinner} spin className="text-2xl text-black" />
-          <p className="text-gray-600 mt-2">Loading Jiras...</p>
-        </div>
-      )}
-      
-      {status === 'authenticated' && !loading && error && (
-        <div className="text-black text-center py-4 border border-black bg-gray-100 p-4">{error}</div>
-      )}
-      
-      {/* Display categorized Jiras */}
-      {status === 'authenticated' && !loading && !error && (
-        <div className="space-y-2">
-          {categorizedIssues.map(category => (
-            <div key={category.title} className="border border-gray-200 rounded overflow-hidden">
-              {/* Section Header with Toggle Button */}
+    <div className="bg-white border border-gray-300 rounded-lg overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-light text-black">My JIRAs</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {activeIssues.length} active, {completedIssues.length} completed
+              {untrackedCount > 0 && (
+                <span className="ml-2 text-orange-600">
+                  <FontAwesomeIcon icon={faExclamationTriangle} className="mr-1" />
+                  {untrackedCount} untracked
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchJiras}
+              className="px-3 py-1 text-sm text-gray-600 hover:text-black transition-colors"
+              disabled={loading}
+            >
+              <FontAwesomeIcon icon={faSync} className={loading ? 'animate-spin' : ''} />
+            </button>
+            {untrackedCount > 0 && (
               <button
-                className="w-full text-left bg-black text-white px-4 py-2 font-light flex justify-between items-center"
-                onClick={() => toggleSectionCollapse(category.title)}
+                onClick={syncUntracked}
+                disabled={syncing}
+                className="px-4 py-2 bg-black text-white text-sm rounded hover:bg-gray-800 transition-colors disabled:opacity-50"
               >
-                {category.title} [{category.issues.length}]
-                <FontAwesomeIcon icon={collapsedSections[category.title] ? faChevronDown : faChevronUp} />
+                {syncing ? 'Syncing...' : `Sync ${untrackedCount} JIRAs`}
               </button>
-              
-              {/* Collapsible Content */}
-              <div className={`overflow-hidden transition-all duration-300 ${collapsedSections[category.title] ? 'h-0' : 'h-auto'}`}>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full bg-white">
-                    <thead className="bg-gray-100 text-black">
-                      <tr>
-                        {tableColumns.map(col => (
-                          <th
-                            key={col.key}
-                            className="px-3 py-2 text-left text-xs font-semibold border-r border-gray-300 last:border-r-0"
-                          >
-                            {col.label}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {category.issues.length === 0 ? (
-                        <tr>
-                          <td colSpan={tableColumns.length} className="text-center text-gray-500 py-4 border-b border-gray-200">
-                            No Jiras in this category.
-                          </td>
-                        </tr>
-                      ) : (
-                        category.issues.map((issue, index) => {
-                          const isRecorded = internalJiraNumbers.has(issue.key);
-                          return (
-                            <tr key={issue.key} className={`border-b border-gray-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                              <td className="px-3 py-2 font-mono text-sm whitespace-nowrap">
-                                <a
-                                  href={`https://generalith.atlassian.net/browse/${issue.key}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="hover:underline font-bold !text-black underline"
-                                >
-                                  {issue.key}
-                                </a>
-                              </td>
-                              <td className="px-3 py-2 text-sm text-black">{issue.fields.summary || '-'}</td>
-                              <td className="px-3 py-2 text-xs text-black font-mono whitespace-nowrap">{formatDate(issue.fields.created)}</td>
-                              <td className="px-3 py-2 text-sm text-black">{issue.fields.reporter?.displayName || '-'}</td>
-                              <td className="px-3 py-2 text-sm text-black">{issue.fields.status?.name || '-'}</td>
-                              <td className="px-3 py-2 text-sm text-center">
-                                <FontAwesomeIcon
-                                  icon={isRecorded ? faCheckSquare : faSquare}
-                                  className={isRecorded ? "text-black" : "text-gray-400"}
-                                />
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Active Issues */}
+      {activeIssues.length > 0 && (
+        <div className="p-6">
+          <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+            <FontAwesomeIcon icon={faClock} className="text-gray-400" />
+            Active Tasks
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">JIRA</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Summary</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Tracked</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {activeIssues.map(issue => (
+                  <IssueRow 
+                    key={issue.key} 
+                    issue={issue} 
+                    isTracked={internalJiraNumbers.has(issue.key)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Completed Issues - Collapsible */}
+      {completedIssues.length > 0 && (
+        <div className="border-t border-gray-200">
+          <button
+            onClick={() => setShowAll(!showAll)}
+            className="w-full px-6 py-3 text-left text-sm text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-between"
+          >
+            <span>Completed ({completedIssues.length})</span>
+            <FontAwesomeIcon icon={showAll ? faChevronUp : faChevronDown} />
+          </button>
+          
+          {showAll && (
+            <div className="px-6 pb-6">
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <tbody className="divide-y divide-gray-200">
+                    {completedIssues.map(issue => (
+                      <IssueRow 
+                        key={issue.key} 
+                        issue={issue} 
+                        isTracked={internalJiraNumbers.has(issue.key)}
+                      />
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
-          ))}
+          )}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {issues.length === 0 && (
+        <div className="p-8 text-center text-gray-500">
+          No JIRAs assigned to you
         </div>
       )}
     </div>
