@@ -99,6 +99,12 @@ export async function PUT(request, { params }) {
     relatedJira,
     environment,
     dueDate,
+    sqlDetail,
+    envDetail,
+    deploySitDate,
+    deployUatDate,
+    deployPreprodDate,
+    deployProdDate
   } = await request.json();
 
   try {
@@ -123,7 +129,13 @@ export async function PUT(request, { params }) {
         actualStatus,
         relatedJira,
         environment,
-        dueDate
+        dueDate,
+        sqlDetail,
+        envDetail,
+        deploySitDate,
+        deployUatDate,
+        deployPreprodDate,
+        deployProdDate
       },
       { new: true } // Return the updated document
     );

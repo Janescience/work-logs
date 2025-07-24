@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faPlus, faDatabase, faServer, faTrash, faClose, faPencil, 
   faSave, faTimes, faShareSquare, faClock, faCalendarDays,
-  faChevronDown, faChevronUp
+  faChevronDown, faChevronUp , faRocket
 } from '@fortawesome/free-solid-svg-icons';
 import EditJiraModal from '@/components/EditJiraModal';
 import { toast } from 'react-toastify';
@@ -202,6 +202,26 @@ const JiraItem = ({
                       Due {formatDate(jira.dueDate)}
                     </span>
                   )}
+                  {(() => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      
+                      const deployments = [
+                        { type: 'SIT', date: jira.deploySitDate },
+                        { type: 'UAT', date: jira.deployUatDate },
+                        { type: 'PREPROD', date: jira.deployPreprodDate },
+                        { type: 'PROD', date: jira.deployProdDate }
+                      ].filter(d => d.date && new Date(d.date) >= today);
+                      
+                      const nextDeploy = deployments[0];
+                      
+                      return nextDeploy ? (
+                        <span className="flex items-center gap-1 px-2 py-1 bg-red-50 text-red-700 rounded">
+                          <FontAwesomeIcon icon={faRocket} className="text-xs" />
+                          Next: {nextDeploy.type} {formatDate(nextDeploy.date)}
+                        </span>
+                      ) : null;
+                    })()}
                 </div>
 
                 {/* Recent Logs Preview */}

@@ -9,13 +9,18 @@ import {
   faFileExport,
   faChartBar,
   faCalendarCheck,
+  faListCheck,
   faTimes,
   faChevronLeft,
-  faChevronRight
+  faChevronRight,
+  faHistory
 } from '@fortawesome/free-solid-svg-icons';
 import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'react-toastify';
 import { useSession } from 'next-auth/react';
+import MyJiras from '@/components/MyJiras'; 
+import JiraFormModal from '@/components/JiraFormModal';
+import DeploymentHistory from '@/components/DeploymentHistory';
 
 const FloatingQuickActions = () => {
   const router = useRouter();
@@ -28,25 +33,65 @@ const FloatingQuickActions = () => {
   const [logHours, setLogHours] = useState('');
   const [logDescription, setLogDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const [showMyJirasModal, setShowMyJirasModal] = useState(false);
+  const [showJiraFormModal, setShowJiraFormModal] = useState(false);
+  const [showDeploymentHistory, setShowDeploymentHistory] = useState(false);
+  const [allJiras, setAllJiras] = useState([]);
   // Don't show on login/register pages
   const hiddenPaths = ['/login', '/register'];
   if (hiddenPaths.includes(pathname)) return null;
 
   useEffect(() => {
-    // Fetch active jiras for quick log
     if (session) {
       fetch('/api/jiras')
         .then(res => res.json())
         .then(data => {
-          const active = data.jiras?.filter(j => 
-            j.actualStatus?.toLowerCase() === 'in progress'
-          ).slice(0, 10) || [];
-          setActiveJiras(active);
-        })
-        .catch(console.error);
+          setAllJiras(data.jiras || []);
+          // ... existing code for activeJiras
+        });
     }
   }, [session]);
+
+  useEffect(() => {
+  // Fetch active jiras for quick log
+  if (session) {
+    fetch('/api/jiras')
+      .then(res => res.json())
+      .then(data => {
+        if (data.jiras) {
+          // Get current month start date
+          const now = new Date();
+          const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+          
+          // Filter jiras that have logs in current month
+          const jirasWithRecentLogs = data.jiras.filter(jira => {
+            // Check if jira has any logs in current month
+            if (!jira.dailyLogs || jira.dailyLogs.length === 0) return false;
+            
+            // Check if any log is from current month
+            return jira.dailyLogs.some(log => {
+              const logDate = new Date(log.logDate);
+              return logDate >= currentMonthStart;
+            });
+          });
+          
+          // Sort by most recent log date (descending)
+          jirasWithRecentLogs.sort((a, b) => {
+            const getLatestLogDate = (jira) => {
+              if (!jira.dailyLogs || jira.dailyLogs.length === 0) return new Date(0);
+              return new Date(Math.max(...jira.dailyLogs.map(log => new Date(log.logDate))));
+            };
+            
+            return getLatestLogDate(b) - getLatestLogDate(a);
+          });
+          
+          // Take top 10
+          setActiveJiras(jirasWithRecentLogs);
+        }
+      })
+      .catch(console.error);
+  }
+}, [session]);
 
   const handleQuickLog = async () => {
     if (!selectedJira || !logHours || !logDescription) {
@@ -93,7 +138,15 @@ const FloatingQuickActions = () => {
       title: 'New Task',
       icon: faPlus,
       onClick: () => {
-        router.push('/daily-logs');
+        setShowJiraFormModal(true);  // เปลี่ยนจาก router.push
+        setIsExpanded(false);
+      }
+    },
+    {
+      title: 'My JIRAs',
+      icon: faListCheck, // หรือ faClipboardList
+      onClick: () => {
+        setShowMyJirasModal(true);
         setIsExpanded(false);
       }
     },
@@ -102,14 +155,6 @@ const FloatingQuickActions = () => {
       icon: faClock,
       onClick: () => {
         setShowQuickLog(true);
-        setIsExpanded(false);
-      }
-    },
-    {
-      title: 'Deploy',
-      icon: faRocket,
-      onClick: () => {
-        router.push('/deployment-history');
         setIsExpanded(false);
       }
     },
@@ -125,25 +170,40 @@ const FloatingQuickActions = () => {
       }
     },
     {
-      title: 'Reports',
-      icon: faChartBar,
+      title: 'Deploy History',
+      icon: faHistory,
       onClick: () => {
-        router.push('/it-lead');
-        setIsExpanded(false);
-      }
-    },
-    {
-      title: 'Calendar',
-      icon: faCalendarCheck,
-      onClick: () => {
-        router.push('/');
-        setTimeout(() => {
-          document.getElementById('work-calendar')?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
+        setShowDeploymentHistory(true);
         setIsExpanded(false);
       }
     }
   ];
+
+  const handleSaveJira = async (jiraId, jiraData) => {
+  try {
+      const url = jiraId ? `/api/jiras/${jiraId}` : '/api/jiras';
+      const method = jiraId ? 'PUT' : 'POST';
+      
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(jiraData),
+      });
+
+      if (res.ok) {
+        toast.success(jiraId ? 'Task updated successfully!' : 'Task created successfully!');
+        setShowJiraFormModal(false);
+        // Refresh หน้าถ้าอยู่ในหน้า daily-logs
+        if (pathname === '/daily-logs') {
+          window.location.reload();
+        }
+      } else {
+        throw new Error('Failed to save task');
+      }
+    } catch (error) {
+      toast.error('Error saving task');
+    }
+  };
 
   return (
     <>
@@ -182,10 +242,68 @@ const FloatingQuickActions = () => {
         </div>
       </div>
 
+      {/* JiraFormModal */}
+      {showJiraFormModal && (
+        <JiraFormModal
+          isOpen={showJiraFormModal}
+          onClose={() => setShowJiraFormModal(false)}
+          jira={null}  // null สำหรับ create mode
+          onSaveJira={handleSaveJira}
+          userEmail={session?.user?.email}
+        />
+      )}
+
+      {/* My JIRAs Modal */}
+      {showMyJirasModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border-2 border-black rounded-lg shadow-xl w-full max-w-5xl max-h-[80vh] flex flex-col">
+            <div className="bg-black text-white p-2 flex items-center justify-end ">
+              {/* <h3 className="text-xl font-light">My JIRAs</h3> */}
+              <button
+                onClick={() => setShowMyJirasModal(false)}
+                className="hover:bg-gray-800 w-8 h-8 rounded flex items-center justify-center transition-colors"
+              >
+                <FontAwesomeIcon icon={faTimes} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-auto">
+              <MyJiras 
+                userEmail={session?.user?.email} 
+                compact={true}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeploymentHistory && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border-2 border-black rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] flex flex-col">
+            <div className="bg-black text-white px-6 py-4 flex items-center justify-between">
+              <h3 className="text-xl font-light">Deployment History</h3>
+              <button
+                onClick={() => setShowDeploymentHistory(false)}
+                className="hover:bg-gray-800 w-8 h-8 rounded flex items-center justify-center transition-colors"
+              >
+                <FontAwesomeIcon icon={faTimes} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-hidden">
+              <DeploymentHistory 
+                allJiras={allJiras} 
+                compact={true}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Quick Log Modal */}
       {showQuickLog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white border-2 border-black rounded-lg shadow-xl w-full max-w-md">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 ">
+          <div className="bg-white border-2 border-black shadow-xl w-full max-w-md">
             <div className="bg-black text-white px-6 py-4 flex items-center justify-between">
               <h3 className="text-xl font-light">Quick Time Log</h3>
               <button
@@ -204,7 +322,7 @@ const FloatingQuickActions = () => {
                 <select
                   value={selectedJira}
                   onChange={(e) => setSelectedJira(e.target.value)}
-                  className="w-full p-3 border-b-2 border-gray-300 focus:border-black outline-none transition-colors bg-transparent"
+                  className="w-full p-3  focus:border-black outline-none transition-colors bg-transparent text-black rounded-md"
                   disabled={isSubmitting}
                 >
                   <option value="">-- Select Task --</option>
@@ -225,7 +343,7 @@ const FloatingQuickActions = () => {
                   step="0.5"
                   value={logHours}
                   onChange={(e) => setLogHours(e.target.value)}
-                  className="w-full p-3 border-b-2 border-gray-300 focus:border-black outline-none transition-colors"
+                  className="w-full p-3  focus:border-black outline-none transition-colors rounded-md"
                   placeholder="e.g., 2.5"
                   disabled={isSubmitting}
                 />
@@ -238,7 +356,7 @@ const FloatingQuickActions = () => {
                 <textarea
                   value={logDescription}
                   onChange={(e) => setLogDescription(e.target.value)}
-                  className="w-full p-3 border-2 border-gray-300 focus:border-black outline-none transition-colors rounded"
+                  className="w-full p-3 focus:border-black outline-none transition-colors  rounded-md"
                   rows="3"
                   placeholder="Brief description..."
                   disabled={isSubmitting}

@@ -1,125 +1,281 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { formatDate } from '@/utils/dateUtils'; // Assuming formatDate exists and works
+import { formatDate } from '@/utils/dateUtils';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { 
+  faServer, 
+  faDatabase, 
+  faCheckCircle,
+  faCalendarDays,
+  faClock,
+  faRocket
+} from '@fortawesome/free-solid-svg-icons';
 
 const NeedAction = ({ allJiras }) => {
-  const [needActionItems, setNeedActionItems] = useState({ production: [], preProduction: [] });
+  const [deploymentSchedule, setDeploymentSchedule] = useState({
+    today: [],
+    tomorrow: [],
+    thisWeek: [],
+    nextWeek: []
+  });
 
   useEffect(() => {
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set time to the beginning of the day
-
-    const filteredItems = { production: [], preProduction: [] };
-
-    allJiras.forEach(jira => {
-      jira.dailyLogs.forEach(log => {
-        const logDate = new Date(log.logDate);
-        logDate.setHours(0, 0, 0, 0); // Normalize logDate to beginning of the day
-
-        const descriptionLower = log.taskDescription?.toLowerCase() || '';
-
-        const isDeployProduction = descriptionLower.includes('deploy production') || descriptionLower.includes('deploy prod');
-        const isDeployPreProduction = descriptionLower.includes('deploy pre production') || descriptionLower.includes('deploy preprod');
-
-        // Only consider logs that are today or in the future and are deployment-related
-        if (logDate >= today && (isDeployProduction || isDeployPreProduction)) {
-          const timeDifference = logDate.getTime() - today.getTime();
-          const daysRemaining = Math.ceil(timeDifference / (1000 * 3600 * 24)); // Days remaining (0 for today, 1 for tomorrow, etc.)
+    today.setHours(0, 0, 0, 0);
     
-          const item = {
-            logDate: logDate,
-            jiraNumber: jira.jiraNumber,
-            jiraDescription: jira.description,
-            environment: log.envDetail,
-            sql: log.sqlDetail,
-            daysRemaining: daysRemaining,
-          };
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    
+    const endOfThisWeek = new Date(today);
+    endOfThisWeek.setDate(today.getDate() + (7 - today.getDay()));
+    
+    const twoWeeksFromNow = new Date(today);
+    twoWeeksFromNow.setDate(today.getDate() + 14);
 
-          if (isDeployProduction) {
-            filteredItems.production.push(item);
-          } else { // It's preProduction
-            filteredItems.preProduction.push(item);
+    const allDeployments = [];
+
+    // Collect all deployment dates from JIRAs
+    allJiras.forEach(jira => {
+      const deploymentStages = [
+        { stage: 'SIT', date: jira.deploySitDate, order: 1 },
+        { stage: 'UAT', date: jira.deployUatDate, order: 2 },
+        { stage: 'PREPROD', date: jira.deployPreprodDate, order: 3 },
+        { stage: 'PROD', date: jira.deployProdDate, order: 4 }
+      ];
+
+      deploymentStages.forEach(deployment => {
+        if (deployment.date) {
+          const deployDate = new Date(deployment.date);
+          deployDate.setHours(0, 0, 0, 0);
+          
+          const timeDiff = deployDate.getTime() - today.getTime();
+          const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+          // Only include deployments within next 2 weeks
+          if (daysRemaining >= 0 && daysRemaining <= 14) {
+            allDeployments.push({
+              jiraNumber: jira.jiraNumber,
+              description: jira.description,
+              stage: deployment.stage,
+              stageOrder: deployment.order,
+              date: deployDate,
+              daysRemaining: daysRemaining,
+              envDetail: jira.envDetail,
+              sqlDetail: jira.sqlDetail,
+              projectName: jira.projectName,
+              serviceName: jira.serviceName,
+              actualStatus: jira.actualStatus
+            });
           }
         }
       });
     });
 
-    // Sort items by logDate for chronological order
-    filteredItems.production.sort((a, b) => a.logDate - b.logDate);
-    filteredItems.preProduction.sort((a, b) => a.logDate - b.logDate);
+    // Categorize deployments
+    const categorized = {
+      today: [],
+      tomorrow: [],
+      thisWeek: [],
+      nextWeek: []
+    };
 
-    setNeedActionItems(filteredItems);
-  }, [allJiras]); // Re-run effect when allJiras changes
+    allDeployments.forEach(deployment => {
+      if (deployment.daysRemaining === 0) {
+        categorized.today.push(deployment);
+      } else if (deployment.daysRemaining === 1) {
+        categorized.tomorrow.push(deployment);
+      } else if (deployment.date <= endOfThisWeek) {
+        categorized.thisWeek.push(deployment);
+      } else {
+        categorized.nextWeek.push(deployment);
+      }
+    });
+
+    // Sort each category
+    Object.keys(categorized).forEach(key => {
+      categorized[key].sort((a, b) => {
+        // First sort by date
+        const dateDiff = a.date - b.date;
+        if (dateDiff !== 0) return dateDiff;
+        // Then by stage order
+        return a.stageOrder - b.stageOrder;
+      });
+    });
+
+    setDeploymentSchedule(categorized);
+  }, [allJiras]);
+
+  const getStageColor = (stage) => {
+    switch(stage) {
+      case 'SIT': return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'UAT': return 'bg-purple-100 text-purple-800 border-purple-300';
+      case 'PREPROD': return 'bg-orange-100 text-orange-800 border-orange-300';
+      case 'PROD': return 'bg-red-100 text-red-800 border-red-300';
+      default: return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
+  const DeploymentItem = ({ deployment, highlight = false }) => (
+    <div className={`flex items-center justify-between p-3 rounded-lg border ${
+      highlight ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200 hover:bg-gray-50'
+    } transition-all`}>
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <span className={`px-2 py-1 text-xs font-bold rounded border ${getStageColor(deployment.stage)}`}>
+          {deployment.stage}
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-sm font-bold text-gray-900">{deployment.jiraNumber}</span>
+            <span className="text-gray-400">•</span>
+            <span className="text-sm text-gray-700 truncate">{deployment.description}</span>
+          </div>
+          {deployment.projectName && (
+            <div className="text-xs text-gray-500 mt-1">
+              {deployment.projectName}
+              {deployment.serviceName && <span> • {deployment.serviceName}</span>}
+            </div>
+          )}
+        </div>
+      </div>
+      
+      <div className="flex items-center gap-3 ml-3">
+        <div className="flex items-center gap-2">
+          {deployment.envDetail && (
+            <FontAwesomeIcon icon={faServer} className="text-gray-400 text-sm" title="Has environment details" />
+          )}
+          {deployment.sqlDetail && (
+            <FontAwesomeIcon icon={faDatabase} className="text-gray-400 text-sm" title="Has SQL scripts" />
+          )}
+        </div>
+        
+        <div className="text-right">
+          <div className="text-xs text-gray-500">{formatDate(deployment.date)}</div>
+          {deployment.daysRemaining === 0 ? (
+            <span className="text-xs font-bold text-yellow-600">TODAY</span>
+          ) : deployment.daysRemaining === 1 ? (
+            <span className="text-xs font-bold text-orange-600">TOMORROW</span>
+          ) : (
+            <span className="text-xs text-gray-600">{deployment.daysRemaining} days</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const hasAnyDeployments = Object.values(deploymentSchedule).some(arr => arr.length > 0);
 
   return (
-    // Main container with border, white background, and padding
-    <div className="mb-4 border border-gray-300 bg-white p-4 ">
-      {/* Header for Deployment Schedule */}
-      <h2 className="text-xl font-bold mb-4 text-black flex items-center font-light">
-        Deployment Schedule
-      </h2>
+    <div className="mb-6 bg-white border border-gray-300 rounded-lg overflow-hidden">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-light text-black flex items-center gap-2">
+              <FontAwesomeIcon icon={faRocket} className="text-gray-600" />
+              Upcoming Deployments
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">Next 2 weeks deployment schedule</p>
+          </div>
+          <div className="text-sm text-gray-500">
+            <FontAwesomeIcon icon={faCalendarDays} className="mr-1" />
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+          </div>
+        </div>
+      </div>
 
-      {/* Production Section */}
-      {needActionItems.production.length > 0 && (
-        <div className="mb-4 pb-4 ">
-          {/* Section Header */}
-          <h3 className="text-black mb-2 bg-black text-white font-light p-2">PRODUCTION</h3>
-          <ul className="space-y-1">
-            {needActionItems.production.map((item, index) => (
-              <li key={`production-${index}`} className="flex items-center space-x-3 text-sm py-2 border-b border-gray-300 last:border-b-0">
-                {/* Date */}
-                <span className="text-black font-mono whitespace-nowrap">{formatDate(item.logDate)}</span>
-                {/* Jira Number (highlighted with gray background) */}
-                <span className="font-bold text-black font-mono  whitespace-nowrap bg-gray-200 px-2 py-1">{item.jiraNumber}</span>
-                {/* Jira Description (takes remaining space) */}
-                <span className="flex-grow text-black">{item.jiraDescription}</span>
-                {/* Days Remaining/Today indicator */}
-                <span className={`px-2 py-1 text-xs font-bold whitespace-nowrap border border-black ${
-                  item.daysRemaining === 0
-                    ? 'bg-black text-white' // "TODAY" style
-                    : 'bg-white text-black' // Future days style
-                }`}>
-                  {item.daysRemaining === 0 ? 'TODAY' : `${item.daysRemaining} DAYS`}
-                </span>
-              </li>
+      {/* Today Section */}
+      {deploymentSchedule.today.length > 0 && (
+        <div className="p-4 bg-yellow-50 border-b border-yellow-200">
+          <h3 className="text-sm font-semibold text-yellow-900 mb-3 flex items-center gap-2">
+            <span className="animate-pulse">🔥</span>
+            TODAY ({deploymentSchedule.today.length})
+          </h3>
+          <div className="space-y-2">
+            {deploymentSchedule.today.map((deployment, index) => (
+              <DeploymentItem key={`today-${index}`} deployment={deployment} highlight={true} />
             ))}
-          </ul>
+          </div>
         </div>
       )}
 
-      {/* Pre Production Section */}
-      {needActionItems.preProduction.length > 0 && (
-        <div className="pb-4">
-          {/* Section Header */}
-          <h3 className=" text-black text-lg mb-2 bg-gray-200 text-black font-light p-2">PRE-PRODUCTION</h3>
-          <ul className="space-y-1">
-            {needActionItems.preProduction.map((item, index) => (
-              <li key={`pre-production-${index}`} className="flex items-center space-x-3 text-sm py-2 border-b border-gray-300 last:border-b-0">
-                {/* Date */}
-                <span className="text-black font-mono whitespace-nowrap">{formatDate(item.logDate)}</span>
-                {/* Jira Number (highlighted with gray background) */}
-                <span className="font-bold text-black font-mono  whitespace-nowrap bg-gray-200 px-2 py-1">{item.jiraNumber}</span>
-                {/* Jira Description (takes remaining space) */}
-                <span className="flex-grow text-black">{item.jiraDescription}</span>
-                {/* Days Remaining/Today indicator */}
-                <span className={`px-2 py-1 text-xs font-bold whitespace-nowrap border border-black ${
-                  item.daysRemaining === 0
-                    ? 'bg-black text-white' // "TODAY" style
-                    : 'bg-white text-black' // Future days style
-                }`}>
-                  {item.daysRemaining === 0 ? 'TODAY' : `${item.daysRemaining} DAYS`}
-                </span>
-              </li>
+      {/* Tomorrow Section */}
+      {deploymentSchedule.tomorrow.length > 0 && (
+        <div className="p-4 bg-orange-50 border-b border-orange-200">
+          <h3 className="text-sm font-semibold text-orange-900 mb-3">
+            TOMORROW ({deploymentSchedule.tomorrow.length})
+          </h3>
+          <div className="space-y-2">
+            {deploymentSchedule.tomorrow.map((deployment, index) => (
+              <DeploymentItem key={`tomorrow-${index}`} deployment={deployment} />
             ))}
-          </ul>
+          </div>
         </div>
       )}
 
-      {/* Message when no actions are needed */}
-      {needActionItems.production.length === 0 && needActionItems.preProduction.length === 0 && (
-        <p className="text-gray-600 text-sm p-4 text-center border border-gray-300 bg-gray-50">
-          No deployment actions scheduled for today or future dates.
-        </p>
+      {/* This Week Section */}
+      {deploymentSchedule.thisWeek.length > 0 && (
+        <div className="p-4 border-b border-gray-200">
+          <h3 className="text-sm font-semibold text-gray-800 mb-3">
+            THIS WEEK ({deploymentSchedule.thisWeek.length})
+          </h3>
+          <div className="space-y-2">
+            {deploymentSchedule.thisWeek.map((deployment, index) => (
+              <DeploymentItem key={`week-${index}`} deployment={deployment} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Next Week Section */}
+      {deploymentSchedule.nextWeek.length > 0 && (
+        <div className="p-4">
+          <h3 className="text-sm font-semibold text-gray-800 mb-3">
+            NEXT WEEK ({deploymentSchedule.nextWeek.length})
+          </h3>
+          <div className="space-y-2">
+            {deploymentSchedule.nextWeek.map((deployment, index) => (
+              <DeploymentItem key={`nextweek-${index}`} deployment={deployment} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!hasAnyDeployments && (
+        <div className="p-8 text-center">
+          <FontAwesomeIcon icon={faCheckCircle} className="text-4xl text-gray-300 mb-3" />
+          <p className="text-gray-600">No deployments scheduled</p>
+          <p className="text-sm text-gray-500 mt-1">Nothing scheduled in the next 2 weeks</p>
+        </div>
+      )}
+
+      {/* Summary */}
+      {hasAnyDeployments && (
+        <div className="bg-gray-50 p-3 border-t border-gray-200">
+          <div className="flex items-center justify-between text-xs text-gray-600">
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                SIT
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                UAT
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                PREPROD
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                PROD
+              </span>
+            </div>
+            <div className="text-gray-500">
+              Total: {Object.values(deploymentSchedule).reduce((sum, arr) => sum + arr.length, 0)} deployments
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -21,6 +21,7 @@ import { toast } from 'react-toastify';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
+import JiraFormModal from '@/components/JiraFormModal'; 
 import AddJiraModal from '@/components/AddJiraModal';
 import EditJiraModal from '@/components/EditJiraModal';
 import WorkCalendar from '@/components/WorkCalendar';
@@ -32,6 +33,7 @@ import useJiras from '@/hooks/useJiras';
 export default function DailyLogsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const userEmail = session?.user?.email; // Get user email from session
 
   const { 
     allJiras, 
@@ -51,9 +53,8 @@ export default function DailyLogsPage() {
   } = useJiras();
 
   // UI States
-  const [showAddJiraModal, setShowAddJiraModal] = useState(false);
+  const [showJiraFormModal, setShowJiraFormModal] = useState(false); // Use the new modal state
   const [editingJira, setEditingJira] = useState(null);
-  const [showEditJiraModal, setShowEditJiraModal] = useState(false);
   const [showCalendar, setShowCalendar] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   
@@ -261,24 +262,42 @@ export default function DailyLogsPage() {
     setShowExportMenu(false);
   };
 
-  const handleAddJira = async (newJiraData) => {
+  const handleSaveJira = async (jiraId, jiraData) => {
     try {
-      const res = await fetch('/api/jiras', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newJiraData),
-      });
-      if (res.ok) {
-        toast.success('Task added successfully!');
-        setShowAddJiraModal(false);
-        fetchJiras();
+      let res;
+      if (jiraId) {
+        // Update existing Jira
+        const originalJira = updateOptimisticJira(jiraId, jiraData);
+        res = await fetch(`/api/jiras?jiraId=${jiraId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(jiraData),
+        });
+        if (!res.ok) {
+          const errorData = await res.json();
+          rollbackOptimisticJiraUpdate(jiraId, originalJira);
+          throw new Error(errorData.message || 'Failed to update task on server');
+        }
+        toast.success('Task updated successfully!');
       } else {
-        const errorData = await res.json();
-        toast.error(`Failed to add task: ${errorData.message || 'Unknown error'}`);
+        // Add new Jira
+        res = await fetch('/api/jiras', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(jiraData),
+        });
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || 'Failed to add task on server');
+        }
+        toast.success('Task added successfully!');
       }
+      setShowJiraFormModal(false);
+      setEditingJira(null); // Clear editing Jira
+      fetchJiras(); // Re-fetch all Jiras to ensure UI consistency
     } catch (error) {
-      toast.error('Error adding task.');
-      console.error('Error adding task:', error);
+      toast.error(`Error saving task: ${error.message || 'Unknown error'}`);
+      console.error('Error saving task:', error);
     }
   };
 
@@ -309,38 +328,12 @@ export default function DailyLogsPage() {
 
   const handleEditJira = (jira) => {
     setEditingJira(jira);
-    setShowEditJiraModal(true);
+    setShowJiraFormModal(true);
   };
 
   const closeEditJiraModal = () => {
     setEditingJira(null);
-    setShowEditJiraModal(false);
-  };
-
-  const handleUpdateJira = async (jiraId, updatedJiraData) => {
-    let originalJira = null;
-    try {
-      originalJira = updateOptimisticJira(jiraId, updatedJiraData);
-      toast.success('Task updated successfully!');
-      closeEditJiraModal();
-
-      const response = await fetch(`/api/jiras/${jiraId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedJiraData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update task on server');
-      }
-
-    } catch (error) {
-      if (originalJira) {
-        rollbackOptimisticJiraUpdate(jiraId, originalJira);
-      }
-      toast.error(`Failed to update task: ${error.message || 'Unknown error'}`);
-    }
+    setShowJiraFormModal(false);
   };
 
   const handleDeleteJira = async (jiraId) => {
@@ -462,7 +455,10 @@ export default function DailyLogsPage() {
               <div className="flex gap-2">
                 <button 
                   className="px-4 py-2 bg-black text-white font-light hover:bg-gray-800 transition-colors flex items-center gap-2 rounded"
-                  onClick={() => setShowAddJiraModal(true)}
+                  onClick={() => {
+                    setEditingJira(null);
+                    setShowJiraFormModal(true);
+                  }}
                 >
                   <FontAwesomeIcon icon={faPlus} className="text-sm" />
                   New Task
@@ -588,8 +584,20 @@ export default function DailyLogsPage() {
         </div>
       </div>
 
+       {/* Combined Jira Form Modal */}
+      <JiraFormModal
+        isOpen={showJiraFormModal}
+        onClose={() => {
+          setShowJiraFormModal(false);
+          setEditingJira(null); // Clear editing Jira when closing modal
+        }}
+        jira={editingJira} // Pass the Jira object for editing
+        onSaveJira={handleSaveJira} // Universal save handler for add/edit
+        userEmail={userEmail} // Pass user email for fetching Jira issues
+      />
+
       {/* Modals */}
-      <AddJiraModal
+      {/* <AddJiraModal
         show={showAddJiraModal}
         onClose={() => setShowAddJiraModal(false)}
         onAddJira={handleAddJira}
@@ -600,7 +608,7 @@ export default function DailyLogsPage() {
         onClose={closeEditJiraModal}
         jira={editingJira}
         onUpdateJira={handleUpdateJira}
-      />
+      /> */}
     </div>
   );
 }

@@ -20,7 +20,7 @@ export default function Sidebar() {
             items: [
                 { name: "Dashboard", href: "/", icon: "" }, // Added icon back
                 { name: "Daily Logs", href: "/daily-logs", icon: "" }, // Added icon back
-                { name: "Deployment History", href: "/deployment-history", icon: "" }, // Added icon back
+                // { name: "Deployment History", href: "/deployment-history", icon: "" }, // Added icon back
             ]
         },
         {
