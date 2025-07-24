@@ -70,7 +70,7 @@ export default function Home() {
             <NeedAction allJiras={allJiras} />
             
             {/* Due Date Alert Section */}
-            <DueDateAlert allJiras={allJiras} />
+            {/* <DueDateAlert allJiras={allJiras} /> */}
 
             <div className="mb-6">
               <MyJiras userEmail={session.user.email} />
