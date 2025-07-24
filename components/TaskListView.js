@@ -29,7 +29,23 @@ const TaskListView = ({
   // Group jiras based on viewBy
   const groupedJiras = useMemo(() => {
     if (viewBy === 'list') {
-      return { 'All Tasks': jiras };
+      // Sort by latest daily log or creation date
+      const sortedJiras = [...jiras].sort((a, b) => {
+        // Get latest log date for each jira
+        const getLatestLogDate = (jira) => {
+          if (jira.dailyLogs && jira.dailyLogs.length > 0) {
+            return Math.max(...jira.dailyLogs.map(log => new Date(log.logDate).getTime()));
+          }
+          return new Date(jira.createdAt).getTime();
+        };
+        
+        const dateA = getLatestLogDate(a);
+        const dateB = getLatestLogDate(b);
+        
+        return dateB - dateA; // Sort descending (newest first)
+      });
+      
+      return { 'All Tasks': sortedJiras };
     }
 
     const groups = {};
@@ -48,9 +64,22 @@ const TaskListView = ({
       groups[groupKey].push(jira);
     });
 
-    // Sort groups and jiras within groups
+    // Sort groups and jiras within groups by latest activity
     Object.keys(groups).forEach(key => {
-      groups[key].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      groups[key].sort((a, b) => {
+        // Get latest log date for each jira
+        const getLatestLogDate = (jira) => {
+          if (jira.dailyLogs && jira.dailyLogs.length > 0) {
+            return Math.max(...jira.dailyLogs.map(log => new Date(log.logDate).getTime()));
+          }
+          return new Date(jira.createdAt).getTime();
+        };
+        
+        const dateA = getLatestLogDate(a);
+        const dateB = getLatestLogDate(b);
+        
+        return dateB - dateA; // Sort descending (newest first)
+      });
     });
 
     return groups;

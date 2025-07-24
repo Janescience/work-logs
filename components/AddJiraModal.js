@@ -18,6 +18,13 @@ const AddJiraModal = ({ show, onClose, onAddJira }) => {
   const [relatedJira, setRelatedJira] = useState('');
   const [environment, setEnvironment] = useState('');
 
+  const [envDetail, setEnvDetail] = useState('');
+  const [sqlDetail, setSqlDetail] = useState('');
+  const [deploySitDate, setDeploySitDate] = useState('');
+  const [deployUatDate, setDeployUatDate] = useState('');
+  const [deployPreprodDate, setDeployPreprodDate] = useState('');
+  const [deployProdDate, setDeployProdDate] = useState('');
+
   const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]); 
 
   useEffect(() => {
@@ -49,7 +56,13 @@ const AddJiraModal = ({ show, onClose, onAddJira }) => {
       actualStatus,
       relatedJira,
       environment,
-      dueDate
+      dueDate,
+      envDetail,
+      sqlDetail,
+      deploySitDate,
+      deployUatDate,
+      deployPreprodDate,
+      deployProdDate
     });
     resetForm();
     onClose();
@@ -65,7 +78,13 @@ const AddJiraModal = ({ show, onClose, onAddJira }) => {
     setActualStatus('');
     setRelatedJira('');
     setEnvironment('');
+    setEnvDetail('');
+    setSqlDetail('');
     setDueDate(new Date());
+    setDeploySitDate(new Date());
+    setDeployUatDate(new Date());
+    setDeployPreprodDate(new Date());
+    setDeployProdDate(new Date());
   };
 
   if (!show) return null;
@@ -184,6 +203,83 @@ const AddJiraModal = ({ show, onClose, onAddJira }) => {
                 onChange={(e) => setDueDate(e.target.value)}
               />
             </div>
+
+            <div className="col-span-2 border-t pt-4 mt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Technical Details</h4>
+            </div>
+
+            <div className="col-span-2">
+              <label htmlFor="env_detail" className="block text-sm font-medium text-gray-700">Environment Detail</label>
+              <textarea
+                id="env_detail"
+                rows="3"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-black"
+                value={envDetail}
+                onChange={(e) => setEnvDetail(e.target.value)}
+                placeholder="Environment configurations, variables, etc."
+              ></textarea>
+            </div>
+
+            <div className="col-span-2">
+              <label htmlFor="sql_detail" className="block text-sm font-medium text-gray-700">SQL Detail</label>
+              <textarea
+                id="sql_detail"
+                rows="3"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-black"
+                value={sqlDetail}
+                onChange={(e) => setSqlDetail(e.target.value)}
+                placeholder="SQL scripts, database changes, etc."
+              ></textarea>
+            </div>
+
+            {/* Deployment Dates */}
+            <div className="col-span-2 border-t pt-4 mt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Deployment Schedule</h4>
+            </div>
+
+            <div>
+              <label htmlFor="deploy_sit_date" className="block text-sm font-medium text-gray-700">Deploy SIT Date</label>
+              <input
+                type="date"
+                id="deploy_sit_date"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-black"
+                value={deploySitDate}
+                onChange={(e) => setDeploySitDate(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="deploy_uat_date" className="block text-sm font-medium text-gray-700">Deploy UAT Date</label>
+              <input
+                type="date"
+                id="deploy_uat_date"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-black"
+                value={deployUatDate}
+                onChange={(e) => setDeployUatDate(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="deploy_preprod_date" className="block text-sm font-medium text-gray-700">Deploy PREPROD Date</label>
+              <input
+                type="date"
+                id="deploy_preprod_date"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-black"
+                value={deployPreprodDate}
+                onChange={(e) => setDeployPreprodDate(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="deploy_prod_date" className="block text-sm font-medium text-gray-700">Deploy PROD Date</label>
+              <input
+                type="date"
+                id="deploy_prod_date"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-black"
+                value={deployProdDate}
+                onChange={(e) => setDeployProdDate(e.target.value)}
+              />
+            </div> 
           </div>
           <div className="px-4 py-3 bg-gray-50 text-right sm:px-6">
             <button type="button" className="inline-flex justify-center rounded-md border  shadow-sm px-4 py-2 bg-red-500 text-sm font-medium text-white  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" onClick={onClose}>

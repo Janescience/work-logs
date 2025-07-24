@@ -148,6 +148,7 @@ export default function DailyLogsPage() {
       const startOfToday = new Date(today.setHours(0, 0, 0, 0));
       
       filtered = filtered.filter(jira => {
+        // Check if jira has logs in the date range
         const hasLogsInRange = jira.dailyLogs.some(log => {
           const logDate = new Date(log.logDate);
           
@@ -166,7 +167,26 @@ export default function DailyLogsPage() {
           }
         });
 
-        return hasLogsInRange || (dateRange === 'all');
+        // For tasks without logs, check creation date
+        if (!hasLogsInRange && jira.dailyLogs.length === 0) {
+          const createdDate = new Date(jira.createdAt);
+          
+          switch (dateRange) {
+            case 'today':
+              return createdDate.toDateString() === startOfToday.toDateString();
+            case 'thisWeek':
+              const weekStart = new Date(startOfToday);
+              weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+              return createdDate >= weekStart;
+            case 'thisMonth':
+              return createdDate.getMonth() === today.getMonth() && 
+                     createdDate.getFullYear() === today.getFullYear();
+            default:
+              return true;
+          }
+        }
+
+        return hasLogsInRange;
       });
     }
 
@@ -578,8 +598,8 @@ export default function DailyLogsPage() {
       <EditJiraModal
         isOpen={showEditJiraModal}
         onClose={closeEditJiraModal}
+        jira={editingJira}
         onUpdateJira={handleUpdateJira}
-        editingJira={editingJira}
       />
     </div>
   );

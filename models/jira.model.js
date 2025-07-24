@@ -15,6 +15,10 @@ const jiraSchema = new mongoose.Schema({
   environment:String,
   envDetail: { type: String },
   sqlDetail: { type: String },
+  deploySitDate: { type: Date },
+  deployUatDate: { type: Date },
+  deployPreprodDate: { type: Date },
+  deployProdDate: { type: Date },
   dailyLogs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'DailyLog' }],
   userId: {
     type: String, 
