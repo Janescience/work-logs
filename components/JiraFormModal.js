@@ -18,6 +18,7 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
   const [jiraNumber, setJiraNumber] = useState('');
   const [description, setDescription] = useState('');
   const [projectName, setProjectName] = useState('');
+  const [projectId, setProjectId] = useState('');
   const [serviceName, setServiceName] = useState('');
   const [assignee, setAssignee] = useState('');
   const [effortEstimation, setEffortEstimation] = useState('');
@@ -90,7 +91,14 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
       // Always populate these fields immediately
       setJiraNumber(jira.jiraNumber || '');
       setDescription(jira.description || '');
-      setProjectName(jira.projectName || '');
+      // Handle both new projectId and legacy projectName
+      if (jira.projectId) {
+        setProjectId(typeof jira.projectId === 'object' ? jira.projectId._id : jira.projectId);
+        setProjectName(typeof jira.projectId === 'object' ? jira.projectId.name : jira.projectName || '');
+      } else {
+        setProjectName(jira.projectName || '');
+        setProjectId('');
+      }
       setServiceName(jira.serviceName || '');
       setAssignee(jira.assignee || '');
       setEffortEstimation(jira.effortEstimation || '');
@@ -173,7 +181,8 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
     const jiraData = {
       jiraNumber: jiraNumber.trim(),
       description: description.trim(),
-      projectName: projectName.trim(),
+      projectId: projectId,
+      projectName: projectName.trim(), // Keep for backward compatibility
       serviceName: serviceName.trim(),
       assignee: assignee.trim(),
       effortEstimation: parseFloat(effortEstimation) || 0,
@@ -269,18 +278,22 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label htmlFor="project_name" className="block text-sm font-medium text-gray-700">Project</label>
+                  <label htmlFor="project_id" className="block text-sm font-medium text-gray-700">Project</label>
                   <select
-                    id="project_name"
+                    id="project_id"
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
+                    value={projectId}
+                    onChange={(e) => {
+                      const selectedProject = projects.find(p => p._id === e.target.value);
+                      setProjectId(e.target.value);
+                      setProjectName(selectedProject ? selectedProject.name : '');
+                    }}
                     required
                     disabled={isSubmitting}
                   >
                     <option value="">-- Select Project --</option>
                     {projects.map(project => (
-                      <option key={project._id} value={project.name}>{project.name}</option>
+                      <option key={project._id} value={project._id}>{project.name}</option>
                     ))}
                   </select>
                 </div>

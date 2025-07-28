@@ -69,72 +69,29 @@ const DashboardStats = ({ allJiras }) => {
     };
   }, [allJiras]);
 
-  const statCards = [
-    {
-      title: 'Total Tasks',
-      value: stats.totalTasks,
-      icon: faListCheck,
-      color: 'bg-gray-100',
-      textColor: 'text-gray-800'
-    },
-    {
-      title: 'In Progress',
-      value: stats.inProgressTasks,
-      icon: faSpinner,
-      color: 'bg-gray-100',
-      textColor: 'text-blue-800'
-    },
-    {
-      title: 'Completed',
-      value: stats.completedTasks,
-      icon: faCheckCircle,
-      color: 'bg-gray-100',
-      textColor: 'text-green-800'
-    },
-    {
-      title: 'Overdue',
-      value: stats.overdueTasks,
-      icon: faExclamationTriangle,
-      color: stats.overdueTasks > 0 ? 'bg-gray-100' : 'bg-gray-100',
-      textColor: stats.overdueTasks > 0 ? 'text-red-800' : 'text-gray-800'
-    },
-    {
-      title: 'Today\'s Hours',
-      value: stats.todayHours.toFixed(1),
-      icon: faClock,
-      color: 'bg-gray-100',
-      textColor: 'text-purple-800',
-      suffix: 'hrs'
-    },
-    {
-      title: 'Monthly Hours',
-      value: stats.monthlyHours.toFixed(1),
-      icon: faFire,
-      color: 'bg-gray-100',
-      textColor: 'text-orange-800',
-      suffix: 'hrs'
-    }
+  const statItems = [
+    { label: 'TOTAL', value: stats.totalTasks },
+    { label: 'ACTIVE', value: stats.inProgressTasks },
+    { label: 'DONE', value: stats.completedTasks },
+    { label: 'OVERDUE', value: stats.overdueTasks, alert: stats.overdueTasks > 0 },
+    { label: 'TODAY', value: `${stats.todayHours.toFixed(1)}H` },
+    { label: 'MONTH', value: `${stats.monthlyHours.toFixed(1)}H` }
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-      {statCards.map((stat, index) => (
-        <div 
-          key={index} 
-          className={`${stat.color} p-4 border border-gray-200 hover:shadow-md transition-shadow`}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <FontAwesomeIcon 
-              icon={stat.icon} 
-              className={`${stat.textColor} text-xl`}
-            />
+    <div className="p-4">
+      <div className="grid grid-cols-6 gap-4">
+        {statItems.map((item, index) => (
+          <div key={index} className="text-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div className={`text-lg font-light ${item.alert ? 'text-red-600' : 'text-black'}`}>
+              {item.value}
+            </div>
+            <div className="text-xs text-gray-600 mt-1">
+              {item.label}
+            </div>
           </div>
-          <div className={`text-2xl font-bold ${stat.textColor}`}>
-            {stat.value}{stat.suffix && <span className="text-sm font-normal ml-1">{stat.suffix}</span>}
-          </div>
-          <div className="text-xs text-gray-600 mt-1">{stat.title}</div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 };

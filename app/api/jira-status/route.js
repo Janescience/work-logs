@@ -9,7 +9,7 @@ export async function GET(req) {
     }
 
     const jiraNumbers = jiraNumbersParam.split(',');
-    const JIRA_DOMAIN = 'generalith.atlassian.net';
+    const JIRA_DOMAIN = process.env.JIRA_DOMAIN;
     const JIRA_USER = process.env.JIRA_USER;
     const JIRA_API_TOKEN = process.env.JIRA_API_TOKEN;
 

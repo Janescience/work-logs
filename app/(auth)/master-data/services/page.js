@@ -440,20 +440,24 @@ export default function MasterDataServicesPage() {
                                     <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-800 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200 relative">
-                                {loading && (
-                                    <tr className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
-                                        <td>
-                                            <div className="flex flex-col items-center text-black">
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan="5" className="px-6 py-12 text-center">
+                                            <div className="flex flex-col items-center text-gray-600">
                                                 <FontAwesomeIcon icon={faSpinner} spin className="text-2xl mb-2" />
                                                 <span className="text-sm">Loading services...</span>
                                             </div>
                                         </td>
                                     </tr>
-                                )}
-                                {services.length === 0 && !loading ? (
+                                ) : services.length === 0 ? (
                                     <tr>
-                                        <td colSpan="5" className="px-6 py-4 whitespace-nowrap text-center text-gray-600">No services found.</td>
+                                        <td colSpan="5" className="px-6 py-12 text-center">
+                                            <div className="text-gray-500">
+                                                <div className="text-lg font-light mb-2">No services found</div>
+                                                <div className="text-sm">Services will appear here once created</div>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ) : (
                                     services.map((service, index) => (
@@ -470,24 +474,24 @@ export default function MasterDataServicesPage() {
                                                 </td>
                                                 <td className="px-3 sm:px-6 py-4 text-sm text-gray-700">{service.deployBy || '-'}</td>
                                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-end font-light">
+                                                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-end font-light">
                                                         <button
                                                             onClick={() => openServiceModal(service)}
-                                                            className="text-gray-700 hover:text-black text-xs sm:text-sm"
+                                                            className="text-gray-700 hover:text-black text-xs sm:text-sm px-2 py-1 rounded hover:bg-gray-100 transition-colors"
                                                             disabled={service._id.startsWith('temp_')}
                                                         >
-                                                            <FontAwesomeIcon icon={faEdit} className="mr-1" /> 
+                                                            <FontAwesomeIcon icon={faEdit} className="mr-1" /> Edit
                                                         </button>
                                                         <button
                                                             onClick={() => handleDeleteService(service._id, service.name)}
-                                                            className="text-gray-700 hover:text-black text-xs sm:text-sm"
+                                                            className="text-gray-700 hover:text-red-600 text-xs sm:text-sm px-2 py-1 rounded hover:bg-gray-100 transition-colors"
                                                             disabled={service._id.startsWith('temp_')}
                                                         >
-                                                            <FontAwesomeIcon icon={faTrashAlt} className="mr-1" /> 
+                                                            <FontAwesomeIcon icon={faTrashAlt} className="mr-1" /> Delete
                                                         </button>
                                                         <button
                                                             onClick={() => toggleServiceDetails(service._id)}
-                                                            className="text-gray-700 hover:text-black text-xs sm:text-sm"
+                                                            className="text-gray-700 hover:text-black text-xs sm:text-sm px-2 py-1 rounded hover:bg-gray-100 transition-colors"
                                                         >
                                                             <FontAwesomeIcon icon={expandedServiceId === service._id ? faChevronUp : faChevronDown} className="mr-1" /> Details
                                                         </button>
@@ -520,7 +524,7 @@ export default function MasterDataServicesPage() {
                                                             ) : (
                                                                 <div className="overflow-x-auto -mx-4 px-4">
                                                                     {/* Mobile View - Cards */}
-                                                                    <div className="sm:hidden space-y-3 text-black">
+                                                                    <div className="sm:hidden space-y-3 text-gray-900">
                                                                         {serviceDetailsMap[service._id]?.map(detail => (
                                                                             <div key={detail._id} className={`border border-gray-200 rounded-lg p-4 bg-white ${detail._id.startsWith('temp_') ? 'opacity-60' : ''}`}>
                                                                                 <div className="flex justify-between items-start mb-2">
@@ -613,8 +617,10 @@ export default function MasterDataServicesPage() {
                                                                                         </td>
                                                         
                                                                                         <td className="px-4 py-2 text-sm text-gray-700">
-                                                                                            <div className="max-w-xs overflow-hidden text-ellipsis" title={detail.soap}>
-                                                                                                {detail.soap || '-'}
+                                                                                            <div className="max-w-xs" title={detail.soap}>
+                                                                                                {detail.soap ? (
+                                                                                                    <div className="break-all">{detail.soap}</div>
+                                                                                                ) : '-'}
                                                                                             </div>
                                                                                         </td>
                                                                                         <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
@@ -665,7 +671,7 @@ export default function MasterDataServicesPage() {
                                     <input
                                         type="text"
                                         id="serviceName"
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline "
+                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                         value={serviceName}
                                         onChange={(e) => setServiceName(e.target.value)}
                                         required
@@ -677,7 +683,7 @@ export default function MasterDataServicesPage() {
                                     <input
                                         type="text"
                                         id="serviceRepo"
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline "
+                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                         value={serviceRepo}
                                         onChange={(e) => setServiceRepo(e.target.value)}
                                         required
@@ -689,7 +695,7 @@ export default function MasterDataServicesPage() {
                                     <textarea
                                         id="serviceDeployBy"
                                         rows={3}
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline "
+                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                         value={serviceDeployBy}
                                         onChange={(e) => setServiceDeployBy(e.target.value)}
                                         required
@@ -722,7 +728,7 @@ export default function MasterDataServicesPage() {
                 {/* Add/Edit Service Detail Modal */}
                 {isDetailModalOpen && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-sm sm:max-w-4xl max-h-[90vh] overflow-y-auto">
                             <h2 className="text-2xl  mb-4 text-black">
                                 {currentDetail ? 'Edit Service Detail' : `Add Service Detail (${services.find(s => s._id === expandedServiceId)?.name})`}
                             </h2>
@@ -737,7 +743,7 @@ export default function MasterDataServicesPage() {
                                                 name="env"
                                                 value={detailForm.env}
                                                 onChange={handleDetailFormChange}
-                                                className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline "
+                                                className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline"
                                                 required
                                                 disabled={isSubmittingDetail || currentDetail}
                                             >
@@ -769,7 +775,7 @@ export default function MasterDataServicesPage() {
                                             name="url" 
                                             value={detailForm.url} 
                                             onChange={handleDetailFormChange} 
-                                            className=" appearance-none  rounded w-full py-2 px-3 text-black" 
+                                            className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline" 
                                         />
                                     </div>
                                     {/* Database 1 */}
@@ -781,7 +787,7 @@ export default function MasterDataServicesPage() {
                                             name="database1" 
                                             value={detailForm.database1} 
                                             onChange={handleDetailFormChange} 
-                                            className=" appearance-none  rounded w-full py-2 px-3 text-black" 
+                                            className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline" 
                                         />
                                     </div>
                                     {/* Database 2 */}
@@ -793,7 +799,7 @@ export default function MasterDataServicesPage() {
                                             name="database2" 
                                             value={detailForm.database2} 
                                             onChange={handleDetailFormChange} 
-                                            className=" appearance-none  rounded w-full py-2 px-3 text-black" 
+                                            className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline" 
                                         />
                                     </div>
                                     {/* Database 3 */}
@@ -805,7 +811,7 @@ export default function MasterDataServicesPage() {
                                             name="database3" 
                                             value={detailForm.database3} 
                                             onChange={handleDetailFormChange} 
-                                            className=" appearance-none  rounded w-full py-2 px-3 text-black" 
+                                            className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline" 
                                         />
                                     </div>
                                     
@@ -818,7 +824,7 @@ export default function MasterDataServicesPage() {
                                             name="soap" 
                                             value={detailForm.soap} 
                                             onChange={handleDetailFormChange} 
-                                            className=" appearance-none  rounded w-full py-2 px-3 text-black" 
+                                            className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline" 
                                         />
                                     </div>
                                 </div>

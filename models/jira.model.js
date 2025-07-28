@@ -3,7 +3,8 @@ import mongoose from 'mongoose';
 
 const jiraSchema = new mongoose.Schema({
   dueDate: { type: Date  },
-  projectName: { type: String, required: true }, 
+  projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
+  projectName: { type: String }, // Keep temporarily for backward compatibility during migration
   jiraNumber: { type: String, required: true },
   description: String,
   serviceName: { type: String },

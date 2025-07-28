@@ -43,7 +43,7 @@ const statusPriority = {
   'cancel': 15
 };
 
-export default function MyJiras({ userEmail, compact = false }) {
+export default function MyJiras({ userEmail, userName, compact = false, readOnly = false }) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -52,6 +52,7 @@ export default function MyJiras({ userEmail, compact = false }) {
   const [internalJiraNumbers, setInternalJiraNumbers] = useState(new Set());
   const [error, setError] = useState(null);
   const [showAll, setShowAll] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
   const [syncStats, setSyncStats] = useState({ new: 0, existing: 0 });
 
   const fetchJiras = async () => {
@@ -143,28 +144,74 @@ export default function MyJiras({ userEmail, compact = false }) {
     }
   };
 
-  // Group and sort issues
-  const { activeIssues, completedIssues, untrackedCount } = useMemo(() => {
+  // Group and sort issues by status
+  const { groupedIssues, activeIssues, completedIssues, untrackedCount, completedGroups } = useMemo(() => {
     const active = [];
     const completed = [];
+    const statusGroups = {};
+    const completedStatusGroups = {};
     let untracked = 0;
+
+    // Define completed statuses
+    const completedStatuses = ['done', 'closed', 'cancel', 'cancelled', 'deployed to production'];
 
     issues.forEach(issue => {
       const statusName = issue.fields.status?.name?.toLowerCase() || '';
+      const originalStatusName = issue.fields.status?.name || 'No Status';
       const isTracked = internalJiraNumbers.has(issue.key);
+      const isCompleted = completedStatuses.some(completedStatus => 
+        statusName.includes(completedStatus)
+      );
       
-      if (!isTracked && !['done', 'closed', 'cancel'].includes(statusName)) {
+      if (!isTracked && !isCompleted) {
         untracked++;
       }
 
-      if (['done', 'closed', 'cancel'].includes(statusName)) {
+      // Group by original status name
+      if (isCompleted) {
+        // Put completed statuses in separate group
+        if (!completedStatusGroups[originalStatusName]) {
+          completedStatusGroups[originalStatusName] = [];
+        }
+        completedStatusGroups[originalStatusName].push(issue);
         completed.push(issue);
       } else {
+        // Active statuses
+        if (!statusGroups[originalStatusName]) {
+          statusGroups[originalStatusName] = [];
+        }
+        statusGroups[originalStatusName].push(issue);
         active.push(issue);
       }
     });
 
-    // Sort by priority
+    // Sort each status group by priority
+    Object.keys(statusGroups).forEach(status => {
+      statusGroups[status].sort((a, b) => {
+        const priorityA = statusPriority[a.fields.status?.name?.toLowerCase()] || 999;
+        const priorityB = statusPriority[b.fields.status?.name?.toLowerCase()] || 999;
+        return priorityA - priorityB;
+      });
+    });
+
+    Object.keys(completedStatusGroups).forEach(status => {
+      completedStatusGroups[status].sort((a, b) => new Date(b.fields.updated) - new Date(a.fields.updated));
+    });
+
+    // Sort status groups by priority (lowest first)
+    const sortedStatusGroups = Object.entries(statusGroups).sort(([statusA], [statusB]) => {
+      const priorityA = statusPriority[statusA.toLowerCase()] || 999;
+      const priorityB = statusPriority[statusB.toLowerCase()] || 999;
+      return priorityA - priorityB;
+    });
+
+    const sortedCompletedGroups = Object.entries(completedStatusGroups).sort(([statusA], [statusB]) => {
+      const priorityA = statusPriority[statusA.toLowerCase()] || 999;
+      const priorityB = statusPriority[statusB.toLowerCase()] || 999;
+      return priorityA - priorityB;
+    });
+
+    // Legacy sorting for backward compatibility
     active.sort((a, b) => {
       const priorityA = statusPriority[a.fields.status?.name?.toLowerCase()] || 999;
       const priorityB = statusPriority[b.fields.status?.name?.toLowerCase()] || 999;
@@ -173,7 +220,13 @@ export default function MyJiras({ userEmail, compact = false }) {
 
     completed.sort((a, b) => new Date(b.fields.updated) - new Date(a.fields.updated));
 
-    return { activeIssues: active, completedIssues: completed, untrackedCount: untracked };
+    return { 
+      groupedIssues: sortedStatusGroups, 
+      activeIssues: active, 
+      completedIssues: completed, 
+      untrackedCount: untracked,
+      completedGroups: sortedCompletedGroups
+    };
   }, [issues, internalJiraNumbers]);
 
   // Quick add JIRA to tracking
@@ -221,140 +274,149 @@ export default function MyJiras({ userEmail, compact = false }) {
     );
   }
 
-  const IssueRow = ({ issue, isTracked }) => (
+
+  const IssueRowGrouped = ({ issue, isTracked }) => (
     <tr className="hover:bg-gray-50 transition-colors">
-      <td className="px-4 py-3 whitespace-nowrap">
+      <td className="p-3 w-32">
         <a
-          href={`https://generalith.atlassian.net/browse/${issue.key}`}
+          href={`https://${process.env.JIRA_DOMAIN}/browse/${issue.key}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-mono text-sm text-blue-600 hover:underline flex items-center gap-1"
+          className="font-mono text-sm text-blue-600 hover:underline"
+        >
+          {issue.key}
+        </a>
+      </td>
+      <td className="p-3 text-sm text-black">
+        <div className="truncate" title={issue.fields.summary}>
+          {issue.fields.summary}
+        </div>
+      </td>
+      <td className="p-3 w-20 text-xs text-gray-500">
+        {formatDate(issue.fields.created)}
+      </td>
+      {!readOnly && (
+        <td className="px-4 py-3 whitespace-nowrap text-center">
+          {isTracked ? (
+            <FontAwesomeIcon icon={faCheckSquare} className="text-green-600" />
+          ) : (
+            <button
+              onClick={() => quickAddJira(issue)}
+              className="text-gray-400 hover:text-black transition-colors"
+              title="Add to tracking"
+            >
+              <FontAwesomeIcon icon={faPlus} />
+            </button>
+          )}
+        </td>
+      )}
+    </tr>
+  );
+
+  const CompletedIssueRow = ({ issue, isTracked }) => (
+    <tr className="hover:bg-gray-100 transition-colors opacity-75">
+      <td className="px-4 py-3 whitespace-nowrap">
+        <a
+          href={`https://${process.env.JIRA_DOMAIN}/browse/${issue.key}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-sm text-gray-600 hover:underline flex items-center gap-1"
         >
           {issue.key}
           <FontAwesomeIcon icon={faExternalLinkAlt} className="text-xs" />
         </a>
       </td>
-      <td className="px-4 py-3 text-sm text-gray-900">
-        <div className="max-w-xs truncate" title={issue.fields.summary}>
+      <td className="px-4 py-3 text-sm text-gray-700">
+        <div className={readOnly ? "" : "max-w-xs truncate"} title={issue.fields.summary}>
           {issue.fields.summary}
         </div>
       </td>
-      <td className="px-4 py-3 whitespace-nowrap">
-        <span className={`px-2 py-1 text-xs rounded-full ${
-          issue.fields.status?.name?.toLowerCase().includes('done') ? 'bg-green-100 text-green-800' :
-          issue.fields.status?.name?.toLowerCase().includes('progress') ? 'bg-blue-100 text-blue-800' :
-          'bg-gray-100 text-gray-800'
-        }`}>
-          {issue.fields.status?.name || '-'}
-        </span>
-      </td>
       <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">
-        {formatDate(issue.fields.created)}
+        {formatDate(issue.fields.updated)}
       </td>
-      <td className="px-4 py-3 whitespace-nowrap text-center">
-        {isTracked ? (
-          <FontAwesomeIcon icon={faCheckSquare} className="text-green-600" />
-        ) : (
-          <button
-            onClick={() => quickAddJira(issue)}
-            className="text-gray-400 hover:text-black transition-colors"
-            title="Add to tracking"
-          >
-            <FontAwesomeIcon icon={faPlus} />
-          </button>
-        )}
-      </td>
+      {!readOnly && (
+        <td className="px-4 py-3 whitespace-nowrap text-center">
+          {isTracked ? (
+            <FontAwesomeIcon icon={faCheckSquare} className="text-green-500" />
+          ) : (
+            <FontAwesomeIcon icon={faSquare} className="text-gray-300" />
+          )}
+        </td>
+      )}
     </tr>
   );
 
   return (
-    <div className="bg-white border border-gray-300 rounded-lg overflow-hidden">
-      {/* Header */}
-      <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+    <div className="bg-white overflow-hidden">
+      {/* Clean Header */}
+      <div className="border-b border-gray-200 p-3">
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-light text-black">My JIRAs</h2>
-            <p className="text-sm text-gray-600 mt-1">
-              {activeIssues.length} active, {completedIssues.length} completed
-              {untrackedCount > 0 && (
-                <span className="ml-2 text-orange-600">
-                  <FontAwesomeIcon icon={faExclamationTriangle} className="mr-1" />
-                  {untrackedCount} untracked
-                </span>
-              )}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={fetchJiras}
-              className="px-3 py-1 text-sm text-gray-600 hover:text-black transition-colors"
-              disabled={loading}
-            >
-              <FontAwesomeIcon icon={faSync} className={loading ? 'animate-spin' : ''} />
-            </button>
+          <div className="flex items-center space-x-4">
+            <span className="text-sm text-black">
+              {activeIssues.length} Active
+            </span>
+            <span className="text-sm text-gray-500">
+              {completedIssues.length} Done
+            </span>
             {untrackedCount > 0 && (
+              <span className="text-sm text-red-600">
+                {untrackedCount} Untracked
+              </span>
+            )}
+          </div>
+          <div className="flex items-center space-x-3">
+            {completedGroups.length > 0 && (
               <button
-                onClick={syncUntracked}
-                disabled={syncing}
-                className="px-4 py-2 bg-black text-white text-sm rounded hover:bg-gray-800 transition-colors disabled:opacity-50"
+                onClick={() => setShowCompleted(!showCompleted)}
+                className="text-sm text-gray-500 hover:text-black transition-colors"
               >
-                {syncing ? 'Syncing...' : `Sync ${untrackedCount} JIRAs`}
+                {showCompleted ? 'Hide' : 'Show'} Done
               </button>
+            )}
+            {!readOnly && (
+              <>
+                <button
+                  onClick={fetchJiras}
+                  className="text-sm text-gray-500 hover:text-black transition-colors"
+                  disabled={loading}
+                >
+                  <FontAwesomeIcon icon={faSync} className={loading ? 'animate-spin' : ''} />
+                </button>
+                {untrackedCount > 0 && (
+                  <button
+                    onClick={syncUntracked}
+                    disabled={syncing}
+                    className="px-3 py-1 bg-black text-white text-sm rounded hover:bg-gray-800 transition-colors disabled:opacity-50"
+                  >
+                    {syncing ? 'Syncing...' : `Sync ${untrackedCount}`}
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
       </div>
 
       {/* Active Issues */}
-      {activeIssues.length > 0 && (
-        <div className="p-6">
-          <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-            <FontAwesomeIcon icon={faClock} className="text-gray-400" />
-            Active Tasks
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">JIRA</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Summary</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Tracked</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {activeIssues.map(issue => (
-                  <IssueRow 
-                    key={issue.key} 
-                    issue={issue} 
-                    isTracked={internalJiraNumbers.has(issue.key)}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Completed Issues - Collapsible */}
-      {completedIssues.length > 0 && (
-        <div className="border-t border-gray-200">
-          <button
-            onClick={() => setShowAll(!showAll)}
-            className="w-full px-6 py-3 text-left text-sm text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-between"
-          >
-            <span>Completed ({completedIssues.length})</span>
-            <FontAwesomeIcon icon={showAll ? faChevronUp : faChevronDown} />
-          </button>
-          
-          {showAll && (
-            <div className="px-6 pb-6">
+      {groupedIssues.length > 0 && (
+        <div className="divide-y divide-gray-200">
+          {groupedIssues.map(([statusName, statusIssues]) => (
+            <div key={statusName}>
+              <div className="bg-gray-50 border-b border-gray-200 p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-black">
+                    {statusName}
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    {statusIssues.length}
+                  </span>
+                </div>
+              </div>
               <div className="overflow-x-auto">
-                <table className="min-w-full">
-                  <tbody className="divide-y divide-gray-200">
-                    {completedIssues.map(issue => (
-                      <IssueRow 
+                <table className="w-full">
+                  <tbody className="divide-y divide-gray-100">
+                    {statusIssues.map(issue => (
+                      <IssueRowGrouped 
                         key={issue.key} 
                         issue={issue} 
                         isTracked={internalJiraNumbers.has(issue.key)}
@@ -364,7 +426,50 @@ export default function MyJiras({ userEmail, compact = false }) {
                 </table>
               </div>
             </div>
-          )}
+          ))}
+        </div>
+      )}
+
+      {/* Completed Issues (Hidden by Default) */}
+      {showCompleted && completedGroups.length > 0 && (
+        <div className="border-t border-gray-200">
+          <div className="p-4 bg-gray-50">
+            <h3 className="text-sm font-medium text-gray-700 mb-1">Completed Tasks</h3>
+            <p className="text-xs text-gray-500">These tasks are no longer active but can be viewed for reference</p>
+          </div>
+          <div className="divide-y divide-gray-200">
+            {completedGroups.map(([statusName, statusIssues]) => (
+              <div key={statusName} className="p-6 bg-gray-50">
+                <h3 className="text-sm font-medium text-gray-600 mb-3 flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-gray-400"></span>
+                  {statusName} ({statusIssues.length})
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-32">JIRA</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Summary</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24">Updated</th>
+                        {!readOnly && (
+                          <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase w-20">Tracked</th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {statusIssues.map(issue => (
+                        <CompletedIssueRow 
+                          key={issue.key} 
+                          issue={issue} 
+                          isTracked={internalJiraNumbers.has(issue.key)}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

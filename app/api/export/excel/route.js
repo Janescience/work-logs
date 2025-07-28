@@ -11,7 +11,7 @@ import DailyLog from '@/models/dailyLog.model'; // Import DailyLog explicitly
 import dbConnect from '@/lib/mongodb';
 
 // Ensure these are set in your .env.local for Jira API calls
-const JIRA_DOMAIN = process.env.JIRA_DOMAIN || 'generalith.atlassian.net'; // Get from env
+const JIRA_DOMAIN = process.env.JIRA_DOMAIN; // Get from env
 const JIRA_USER = process.env.JIRA_USER; // Get from env
 const JIRA_API_TOKEN = process.env.JIRA_API_TOKEN; // Get from env
 

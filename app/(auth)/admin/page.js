@@ -94,7 +94,7 @@ export default function ManageRolesPage() {
         handleUpdateUser(userId, { type: newType });
     };
 
-    if (status === 'loading' || loadingUsers) {
+    if (status === 'loading') {
         return (
             <div className="fixed inset-0 bg-white flex items-center justify-center z-50">
                 <div className="flex flex-col items-center text-black">
@@ -119,20 +119,100 @@ export default function ManageRolesPage() {
 
                 {errorUsers && <div className="text-red-500 p-3 mb-4">{errorUsers}</div>}
 
-                <div className="overflow-x-auto border border-gray-300 bg-white  p-4">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-100">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">User</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Contact</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Team</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Type</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Roles</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Registered</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                {loadingUsers ? (
+                    <div className="flex justify-center items-center py-12">
+                        <div className="flex flex-col items-center text-black">
+                            <FontAwesomeIcon icon={faSpinner} spin className="text-2xl mb-2" />
+                            <span className="text-sm font-light">Loading users...</span>
+                        </div>
+                    </div>
+                ) : users.length === 0 ? (
+                    <div className="text-center py-12 border border-gray-300 bg-white">
+                        <div className="text-gray-500">
+                            <div className="text-lg font-light mb-2">No users found</div>
+                            <div className="text-sm">Users will appear here once they register</div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="border border-gray-300 bg-white">
+                        {/* Mobile view */}
+                        <div className="block lg:hidden">
                             {users.map(user => (
+                                <div key={user.id} className={`p-4 border-b border-gray-200 ${updatingUserId === user.id ? 'opacity-50' : ''}`}>
+                                    <div className="flex items-center mb-3">
+                                        <img className="h-10 w-10 rounded-full" src={getAvatarUrl(user.username)} alt="" />
+                                        <div className="ml-3">
+                                            <div className="text-sm font-semibold text-gray-900">{user.username.toUpperCase()}</div>
+                                            <div className="text-sm text-gray-500">{user.name}</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="space-y-2 text-sm">
+                                        <div>
+                                            <span className="font-medium text-gray-700">Contact:</span>
+                                            <div className="text-gray-600">{user.email}</div>
+                                            <div className="text-gray-600">{user.phone}</div>
+                                        </div>
+                                        
+                                        <div>
+                                            <span className="font-medium text-gray-700">Team:</span>
+                                            <span className="ml-2 text-gray-600">{user.teamName}</span>
+                                        </div>
+                                        
+                                        <div>
+                                            <span className="font-medium text-gray-700">Type:</span>
+                                            <select
+                                                value={user.type}
+                                                onChange={(e) => handleTypeChange(user.id, e.target.value)}
+                                                disabled={updatingUserId === user.id}
+                                                className="ml-2 rounded-md border-gray-300 shadow-sm text-black p-1 text-xs"
+                                            >
+                                                {availableTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                                            </select>
+                                        </div>
+                                        
+                                        <div>
+                                            <div className="font-medium text-gray-700 mb-2">Roles:</div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {availableRoles.map(role => (
+                                                    <label key={role} className="flex items-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={user.roles?.includes(role) || false}
+                                                            onChange={(e) => handleRoleCheckboxChange(user.id, role, e.target.checked)}
+                                                            className="form-checkbox h-4 w-4 text-black rounded mr-2"
+                                                            disabled={updatingUserId === user.id || (user.id === session.user.id && role === 'ADMIN')}
+                                                        />
+                                                        <span className="text-xs">{role}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            <span className="font-medium text-gray-700">Registered:</span>
+                                            <span className="ml-2 text-gray-600">{formatDate(user.createdAt)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        
+                        {/* Desktop view */}
+                        <div className="hidden lg:block overflow-x-auto p-4">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-100">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">User</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Contact</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Team</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Type</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Roles</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Registered</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {users.map(user => (
                                 <tr key={user.id} className={updatingUserId === user.id ? 'opacity-50' : ''}>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
@@ -148,7 +228,7 @@ export default function ManageRolesPage() {
                                         <div className="text-sm text-gray-500">{user.phone}</div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{user.teamName}</td>
-                                    <td className=" py-4 text-sm">
+                                    <td className="px-6 py-4 text-sm">
                                         <select
                                             value={user.type}
                                             onChange={(e) => handleTypeChange(user.id, e.target.value)}
@@ -174,12 +254,14 @@ export default function ManageRolesPage() {
                                             ))}
                                         </div>
                                     </td>
-                                    <td className=" py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(user.createdAt)}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(user.createdAt)}</td>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

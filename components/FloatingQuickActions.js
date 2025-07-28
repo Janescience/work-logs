@@ -13,7 +13,8 @@ import {
   faTimes,
   faChevronLeft,
   faChevronRight,
-  faHistory
+  faHistory,
+  faEdit
 } from '@fortawesome/free-solid-svg-icons';
 import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'react-toastify';
@@ -36,6 +37,9 @@ const FloatingQuickActions = () => {
   const [showMyJirasModal, setShowMyJirasModal] = useState(false);
   const [showJiraFormModal, setShowJiraFormModal] = useState(false);
   const [showDeploymentHistory, setShowDeploymentHistory] = useState(false);
+  const [showUpdateStatus, setShowUpdateStatus] = useState(false);
+  const [selectedJiraForStatus, setSelectedJiraForStatus] = useState('');
+  const [newStatus, setNewStatus] = useState('');
   const [allJiras, setAllJiras] = useState([]);
   // Don't show on login/register pages
   const hiddenPaths = ['/login', '/register'];
@@ -133,6 +137,41 @@ const FloatingQuickActions = () => {
     }
   };
 
+  const handleUpdateStatus = async () => {
+    if (!selectedJiraForStatus || !newStatus) {
+      toast.warning('Please select a JIRA and enter status');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/jiras/${selectedJiraForStatus}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actualStatus: newStatus
+        }),
+      });
+
+      if (res.ok) {
+        toast.success('Status updated successfully!');
+        setShowUpdateStatus(false);
+        setSelectedJiraForStatus('');
+        setNewStatus('');
+        // Refresh if on daily-logs page
+        if (pathname === '/daily-logs') {
+          window.location.reload();
+        }
+      } else {
+        throw new Error('Failed to update status');
+      }
+    } catch (error) {
+      toast.error('Error updating status');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const actions = [
     {
       title: 'New Task',
@@ -155,6 +194,14 @@ const FloatingQuickActions = () => {
       icon: faClock,
       onClick: () => {
         setShowQuickLog(true);
+        setIsExpanded(false);
+      }
+    },
+    {
+      title: 'Update Status',
+      icon: faEdit,
+      onClick: () => {
+        setShowUpdateStatus(true);
         setIsExpanded(false);
       }
     },
@@ -378,6 +425,78 @@ const FloatingQuickActions = () => {
                 disabled={isSubmitting}
               >
                 {isSubmitting ? 'Saving...' : 'Save Log'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Update Status Modal */}
+      {showUpdateStatus && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border-2 border-black shadow-xl w-full max-w-md">
+            <div className="bg-black text-white px-6 py-4 flex items-center justify-between">
+              <h3 className="text-xl font-light">Update Status</h3>
+              <button
+                onClick={() => setShowUpdateStatus(false)}
+                className="hover:bg-gray-800 w-8 h-8 rounded flex items-center justify-center transition-colors"
+              >
+                <FontAwesomeIcon icon={faTimes} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Task
+                </label>
+                <select
+                  value={selectedJiraForStatus}
+                  onChange={(e) => setSelectedJiraForStatus(e.target.value)}
+                  className="w-full p-3 border border-gray-300 focus:border-black outline-none transition-colors bg-white text-black rounded-md"
+                  disabled={isSubmitting}
+                >
+                  <option value="">-- Select Task --</option>
+                  {allJiras.map(jira => (
+                    <option key={jira._id} value={jira._id}>
+                      {jira.jiraNumber} - {jira.description?.substring(0, 50)}...
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Actual Status
+                </label>
+                <select
+                  value={newStatus}
+                  onChange={(e) => setNewStatus(e.target.value)}
+                  className="w-full p-3 border border-gray-300 focus:border-black outline-none transition-colors bg-white text-black rounded-md"
+                  disabled={isSubmitting}
+                >
+                  <option value="">-- Select Status --</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Done">Done</option>
+                  <option value="Cancel">Cancel</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowUpdateStatus(false)}
+                className="px-6 py-2 border border-gray-300 hover:bg-gray-100 text-gray-700 rounded transition-colors"
+                disabled={isSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateStatus}
+                className="px-6 py-2 bg-black hover:bg-gray-800 text-white rounded transition-colors"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Updating...' : 'Update Status'}
               </button>
             </div>
           </div>

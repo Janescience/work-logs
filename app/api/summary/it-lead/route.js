@@ -89,11 +89,59 @@ export async function GET(req) {
             }
         ]);
 
-        if (results.length === 0) {
-            return NextResponse.json({ projectSummary: [], individualSummary: [] });
+        // Get all users to include those with 0 hours
+        const allUsers = await User.find({}, {
+            _id: 1,
+            username: 1,
+            email: 1,
+            name: 1,
+            type: 1
+        }).lean();
+
+        // Get team information for each user
+        const allUsersWithTeams = await Promise.all(
+            allUsers.map(async (user) => {
+                const team = await Team.findOne({ 
+                    $or: [
+                        { memberIds: user._id },
+                        { members: { $elemMatch: { $in: [user._id, user._id.toString()] } } }
+                    ]
+                }).lean();
+                
+                return {
+                    ...user,
+                    teamName: team?.teamName || null
+                };
+            })
+        );
+
+        // Create a map of logged hours
+        const loggedHoursMap = new Map();
+        if (results.length > 0 && results[0].individualSummary) {
+            results[0].individualSummary.forEach(item => {
+                loggedHoursMap.set(item.user._id.toString(), item.totalHours);
+            });
         }
-        
-        return NextResponse.json(results[0]);
+
+        // Create complete individual summary with all users
+        const completeIndividualSummary = allUsersWithTeams.map(user => ({
+            user: {
+                _id: user._id,
+                username: user.username,
+                email: user.email,
+                name: user.name,
+                type: user.type,
+                teamName: user.teamName
+            },
+            totalHours: loggedHoursMap.get(user._id.toString()) || 0
+        }));
+
+        const response = {
+            projectSummary: results.length > 0 ? results[0].projectSummary || [] : [],
+            individualSummary: completeIndividualSummary.sort((a, b) => a.user.username.localeCompare(b.user.username))
+        };
+
+        return NextResponse.json(response);
 
     } catch (error) {
         console.error("IT Lead Summary API Error:", error);

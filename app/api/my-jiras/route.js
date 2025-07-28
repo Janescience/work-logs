@@ -5,7 +5,7 @@ export const revalidate = 0; // บอก Next.js ให้ Revalidate ทัน
 export const dynamic = 'force-dynamic'; // บอก Next.js ให้บังคับเป็น Dynamic Render (ไม่ใช้ cache)
 
 export async function GET(req) {
-    const JIRA_DOMAIN = 'generalith.atlassian.net';
+    const JIRA_DOMAIN = process.env.JIRA_DOMAIN;
     const JIRA_API_TOKEN = process.env.JIRA_API_TOKEN;
     const JIRA_USER = process.env.JIRA_USER
 

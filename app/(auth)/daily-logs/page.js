@@ -6,25 +6,14 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faPlus, 
   faSpinner, 
-  faSearch,
-  faFilter,
-  faCalendarDays,
-  faFileExport,
-  faChevronDown,
-  faChevronUp,
-  faListCheck,
-  faClock,
-  faCheckCircle,
-  faExclamationTriangle
+  faSearch
 } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
-import JiraFormModal from '@/components/JiraFormModal'; 
-import AddJiraModal from '@/components/AddJiraModal';
-import EditJiraModal from '@/components/EditJiraModal';
-import WorkCalendar from '@/components/WorkCalendar';
+import JiraFormModal from '@/components/JiraFormModal';
+import CalendarModal from '@/components/CalendarModal';
 import TaskListView from '@/components/TaskListView';
 import DailyLogsSummary from '@/components/DailyLogsSummary';
 
@@ -55,8 +44,7 @@ export default function DailyLogsPage() {
   // UI States
   const [showJiraFormModal, setShowJiraFormModal] = useState(false); // Use the new modal state
   const [editingJira, setEditingJira] = useState(null);
-  const [showCalendar, setShowCalendar] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
   
   // Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,14 +66,6 @@ export default function DailyLogsPage() {
       router.push('/login');
     }
   }, [status, router]);
-
-  // Check if mobile
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   // Fetch external JIRA statuses
   useEffect(() => {
@@ -205,17 +185,11 @@ export default function DailyLogsPage() {
     let monthHours = 0;
     let activeCount = 0;
     let doneCount = 0;
-    let overdueCount = 0;
 
     filteredJiras.forEach(jira => {
       const status = jira.actualStatus?.toLowerCase() || '';
       if (status === 'in progress') activeCount++;
       if (status === 'done') doneCount++;
-      
-      if (jira.dueDate && status !== 'done') {
-        const dueDate = new Date(jira.dueDate);
-        if (dueDate < today) overdueCount++;
-      }
 
       jira.dailyLogs.forEach(log => {
         const logDate = new Date(log.logDate);
@@ -241,7 +215,6 @@ export default function DailyLogsPage() {
       totalTasks: filteredJiras.length,
       activeCount,
       doneCount,
-      overdueCount,
       todayHours,
       weekHours,
       monthHours
@@ -331,10 +304,6 @@ export default function DailyLogsPage() {
     setShowJiraFormModal(true);
   };
 
-  const closeEditJiraModal = () => {
-    setEditingJira(null);
-    setShowJiraFormModal(false);
-  };
 
   const handleDeleteJira = async (jiraId) => {
     if (window.confirm('Are you sure you want to delete this task and all its logs?')) {
@@ -359,6 +328,7 @@ export default function DailyLogsPage() {
       }
     }
   };
+
 
   const handleBulkDelete = async () => {
     if (selectedTasks.length === 0) return;
@@ -390,198 +360,174 @@ export default function DailyLogsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="px-4 sm:px-6 py-4">
-          <div className="text-center mb-4">
-            <h1 className="text-3xl font-light text-black">Daily Logs</h1>
-            <div className="w-16 h-px bg-black mx-auto mt-2"></div>
+      {/* Clean Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="mx-auto px-6 py-6">
+          <div className="flex items-center justify-center mb-6">
+            <div>
+              <h1 className="text-2xl font-light text-black">DAILY LOGS</h1>
+              <div className="w-14 h-px bg-black mx-auto mt-4"></div> {/* Divider */}
+            </div>
           </div>
 
-          {/* Control Panel */}
-          <div className="space-y-4">
-            {/* Search and Filters Row */}
-            <div className="flex flex-col sm:flex-row gap-3">
+          {/* Stats */}
+          <div className="mx-auto">
+            <DailyLogsSummary stats={summaryStats} />
+          </div>
+          
+        </div>
+      </div>
+
+      <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Search and Filters */}
+            <div className="flex gap-3">
               {/* Search Box */}
               <div className="flex-1 relative">
                 <input
                   type="text"
-                  placeholder="Search tasks..."
+                  placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-black transition-colors"
+                  className="w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-black transition-colors"
                 />
-                <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-3 text-gray-400" />
+                <FontAwesomeIcon icon={faSearch} className="absolute left-2.5 top-2.5 text-gray-400 text-xs" />
               </div>
 
-              {/* Status Filter */}
+              {/* Filters */}
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-black bg-white text-black"
+                className="text-sm py-2 px-3 border border-gray-300 rounded focus:outline-none focus:border-black bg-white text-black"
               >
-                <option value="all">All Status</option>
-                <option value="active">In Progress</option>
+                <option value="all">All</option>
+                <option value="active">Active</option>
                 <option value="done">Done</option>
-                <option value="cancelled">Cancelled</option>
               </select>
 
-              {/* Date Range */}
               <select
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value)}
-                className=" py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-black bg-white text-black"
+                className="text-sm py-2 px-3 border border-gray-300 rounded focus:outline-none focus:border-black bg-white text-black"
               >
                 <option value="all">All Time</option>
                 <option value="today">Today</option>
-                <option value="thisWeek">This Week</option>
-                <option value="thisMonth">This Month</option>
+                <option value="thisWeek">Week</option>
+                <option value="thisMonth">Month</option>
               </select>
 
-              {/* View By */}
               <select
                 value={viewBy}
                 onChange={(e) => setViewBy(e.target.value)}
-                className="py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-black bg-white text-black"
+                className="text-sm py-2 px-3 border border-gray-300 rounded focus:outline-none focus:border-black bg-white text-black"
               >
-                <option value="list">List View</option>
-                <option value="project">By Project</option>
-                <option value="service">By Service</option>
+                <option value="list">List</option>
+                <option value="project">Project</option>
+                <option value="service">Service</option>
               </select>
             </div>
 
-            {/* Action Buttons Row */}
-            <div className="flex flex-col sm:flex-row justify-between gap-3">
-              <div className="flex gap-2">
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-3">
+              <button 
+                className="px-4 py-2 bg-black text-white text-sm hover:bg-gray-800 transition-colors flex items-center gap-2"
+                onClick={() => {
+                  setEditingJira(null);
+                  setShowJiraFormModal(true);
+                }}
+              >
+                <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                New Task
+              </button>
+
+              {selectedTasks.length > 0 && (
                 <button 
-                  className="px-4 py-2 bg-black text-white font-light hover:bg-gray-800 transition-colors flex items-center gap-2 rounded"
-                  onClick={() => {
-                    setEditingJira(null);
-                    setShowJiraFormModal(true);
-                  }}
+                  className="px-3 py-2 bg-red-600 text-white text-sm hover:bg-red-700 transition-colors"
+                  onClick={handleBulkDelete}
                 >
-                  <FontAwesomeIcon icon={faPlus} className="text-sm" />
-                  New Task
+                  Delete ({selectedTasks.length})
                 </button>
+              )}
 
-                {selectedTasks.length > 0 && (
-                  <button 
-                    className="px-4 py-2 bg-red-600 text-white font-light hover:bg-red-700 transition-colors rounded"
-                    onClick={handleBulkDelete}
-                  >
-                    Delete ({selectedTasks.length})
-                  </button>
-                )}
-              </div>
+              <button
+                onClick={() => setShowCalendarModal(true)}
+                className="px-3 py-2 text-sm border border-gray-300 bg-white text-black hover:bg-gray-50 transition-colors"
+              >
+                Calendar
+              </button>
 
-              <div className="flex gap-2">
-                {/* Calendar Toggle */}
+              <div className="relative">
                 <button
-                  onClick={() => setShowCalendar(!showCalendar)}
-                  className={`px-4 py-2 border ${showCalendar ? 'bg-black text-white' : 'bg-white text-black'} 
-                    border-gray-300 hover:bg-gray-100 transition-colors flex items-center gap-2 rounded`}
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  className="px-3 py-2 text-sm border border-gray-300 bg-white text-black hover:bg-gray-50 transition-colors"
                 >
-                  <FontAwesomeIcon icon={faCalendarDays} />
-                  <span className="hidden sm:inline">Month Summary</span>
+                  Export
                 </button>
 
-                {/* Export Button */}
-                <div className="relative">
-                  <button
-                    onClick={() => setShowExportMenu(!showExportMenu)}
-                    className="px-4 py-2 border border-gray-300 bg-white text-black hover:bg-gray-100 
-                      transition-colors flex items-center gap-2 rounded"
-                  >
-                    <FontAwesomeIcon icon={faFileExport} />
-                    <span className="hidden sm:inline">Export</span>
-                  </button>
-
-                  {showExportMenu && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-50">
-                      <h3 className="font-medium mb-3 text-black">Export Options</h3>
-                      <div className="space-y-2">
-                        <select
-                          value={exportMonth}
-                          onChange={(e) => setExportMonth(parseInt(e.target.value))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-black text-black"
-                        >
-                          {Array.from({ length: 12 }, (_, i) => (
-                            <option key={i + 1} value={i + 1}>
-                              {new Date(0, i).toLocaleString('default', { month: 'long' })}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          value={exportYear}
-                          onChange={(e) => setExportYear(parseInt(e.target.value))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-black text-black"
-                        >
-                          {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                            <option key={year} value={year}>{year}</option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={handleExport}
-                          className="w-full px-4 py-2 bg-black text-white hover:bg-gray-800 transition-colors rounded"
-                        >
-                          Download Excel
-                        </button>
-                      </div>
+                {showExportMenu && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded shadow-lg p-4 z-50">
+                    <div className="space-y-3">
+                      <select
+                        value={exportMonth}
+                        onChange={(e) => setExportMonth(parseInt(e.target.value))}
+                        className="w-full text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-black"
+                      >
+                        {Array.from({ length: 12 }, (_, i) => (
+                          <option key={i + 1} value={i + 1}>
+                            {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={exportYear}
+                        onChange={(e) => setExportYear(parseInt(e.target.value))}
+                        className="w-full text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-black"
+                      >
+                        {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={handleExport}
+                        className="w-full px-4 py-2 bg-black text-white text-sm hover:bg-gray-800 transition-colors"
+                      >
+                        Download
+                      </button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Summary Cards */}
-      <div className="px-4 sm:px-6 py-4">
-        <DailyLogsSummary stats={summaryStats} />
-      </div>
+      
 
       {/* Main Content */}
-      <div className="px-4 sm:px-6 pb-6">
-        <div className={`grid grid-cols-1 gap-6`}>
-
-          {/* Calendar View */}
-          {showCalendar && (
-            <div className={isMobile ? 'mt-6' : ''}>
-              <div className="sticky top-32">
-                <WorkCalendar allJiras={filteredJiras} />
-              </div>
-            </div>
-          )}
-
-          {/* Task List */}
-          <TaskListView
-            jiras={filteredJiras}
-            viewBy={viewBy}
-            onAddLog={handleAddLog}
-            onEditJira={handleEditJira}
-            onDeleteJira={handleDeleteJira}
-            onSelectTask={(taskId) => {
-              setSelectedTasks(prev => 
-                prev.includes(taskId) 
-                  ? prev.filter(id => id !== taskId)
-                  : [...prev, taskId]
-              );
-            }}
-            selectedTasks={selectedTasks}
-            externalStatuses={externalStatuses}
-            updateOptimisticJira={updateOptimisticJira}
-            rollbackOptimisticJiraUpdate={rollbackOptimisticJiraUpdate}
-            deleteOptimisticJira={deleteOptimisticJira}
-            rollbackOptimisticJiraDelete={rollbackOptimisticJiraDelete}
-            updateOptimisticLog={updateOptimisticLog}
-            rollbackOptimisticLogUpdate={rollbackOptimisticLogUpdate}
-            deleteOptimisticLog={deleteOptimisticLog}
-            rollbackOptimisticLogDelete={rollbackOptimisticLogDelete}
-          />
-        
-
-        </div>
+      <div className="pl-4 pr-4 mx-auto ">
+        {/* Task List - Full width */}
+        <TaskListView
+          jiras={filteredJiras}
+          viewBy={viewBy}
+          onAddLog={handleAddLog}
+          onEditJira={handleEditJira}
+          onDeleteJira={handleDeleteJira}
+          onSelectTask={(taskId) => {
+            setSelectedTasks(prev => 
+              prev.includes(taskId) 
+                ? prev.filter(id => id !== taskId)
+                : [...prev, taskId]
+            );
+          }}
+          selectedTasks={selectedTasks}
+          externalStatuses={externalStatuses}
+          updateOptimisticJira={updateOptimisticJira}
+          rollbackOptimisticJiraUpdate={rollbackOptimisticJiraUpdate}
+          deleteOptimisticJira={deleteOptimisticJira}
+          rollbackOptimisticJiraDelete={rollbackOptimisticJiraDelete}
+          updateOptimisticLog={updateOptimisticLog}
+          rollbackOptimisticLogUpdate={rollbackOptimisticLogUpdate}
+          deleteOptimisticLog={deleteOptimisticLog}
+          rollbackOptimisticLogDelete={rollbackOptimisticLogDelete}
+        />
       </div>
 
        {/* Combined Jira Form Modal */}
@@ -596,19 +542,13 @@ export default function DailyLogsPage() {
         userEmail={userEmail} // Pass user email for fetching Jira issues
       />
 
-      {/* Modals */}
-      {/* <AddJiraModal
-        show={showAddJiraModal}
-        onClose={() => setShowAddJiraModal(false)}
-        onAddJira={handleAddJira}
+      {/* Calendar Modal */}
+      <CalendarModal
+        isOpen={showCalendarModal}
+        onClose={() => setShowCalendarModal(false)}
+        allJiras={filteredJiras}
       />
 
-      <EditJiraModal
-        isOpen={showEditJiraModal}
-        onClose={closeEditJiraModal}
-        jira={editingJira}
-        onUpdateJira={handleUpdateJira}
-      /> */}
     </div>
   );
 }

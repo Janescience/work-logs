@@ -81,7 +81,7 @@ export default function RegisterPage() {
                         <input
                             type="email"
                             id="email"
-                            placeholder="Email (email@generali.co.th)"
+                            placeholder="Email"
                             className="w-full px-0 py-3 text-black bg-transparent border-0 border-b border-gray-300 focus:border-black focus:outline-none transition-colors placeholder-gray-400"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}

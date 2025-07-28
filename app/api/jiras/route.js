@@ -4,6 +4,7 @@ import { authOptions } from '../auth/[...nextauth]/route'; // Adjust path if aut
 
 import mongoose from 'mongoose';
 import Jira from '@/models/jira.model';
+import Project from '@/models/project.model';
 
 import DailyLog from '@/models/dailyLog.model'; // Import DailyLog Model
 import dbConnect from '@/lib/mongodb';
@@ -24,6 +25,10 @@ export async function GET() {
       .populate({
         path: 'dailyLogs'
       })
+      .populate({
+        path: 'projectId',
+        select: 'name type'
+      })
       .lean();
 
     return NextResponse.json({ jiras });
@@ -43,6 +48,15 @@ export async function POST(request) {
 
     const userId = session.user.id; // ดึง userId จาก session
     const data = await request.json();
+    
+    // Handle backward compatibility: if projectName is provided but not projectId
+    if (data.projectName && !data.projectId) {
+      const project = await Project.findOne({ name: data.projectName });
+      if (project) {
+        data.projectId = project._id;
+      }
+    }
+    
     const newJira = new Jira({ ...data, userId: userId });
     const savedJira = await newJira.save();
 
@@ -87,8 +101,10 @@ export async function PUT(request, { params }) {
   const { searchParams } = new URL(request.url);
   const jiraId = searchParams.get('jiraId');
 
+  const data = await request.json();
   const {
     projectName,
+    projectId,
     serviceName,
     jiraNumber,
     description,
@@ -105,7 +121,7 @@ export async function PUT(request, { params }) {
     deployUatDate,
     deployPreprodDate,
     deployProdDate
-  } = await request.json();
+  } = data;
 
   try {
     await dbConnect();
@@ -115,11 +131,20 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ message: 'Unauthorized: No valid session' }, { status: 401 });
     }
 
+    // Handle backward compatibility: if projectName is provided but not projectId
+    if (data.projectName && !data.projectId) {
+      const project = await Project.findOne({ name: data.projectName });
+      if (project) {
+        data.projectId = project._id;
+      }
+    }
+
     const userId = session.user.id;
     const updatedJira = await Jira.findOneAndUpdate(
       { _id: jiraId, userId: userId }, // ค้นหาด้วย ID และ userId
       {
         projectName,
+        projectId,
         serviceName,
         jiraNumber,
         description,
