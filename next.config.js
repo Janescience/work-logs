@@ -4,10 +4,7 @@ const isProd = process.env.NODE_ENV === 'production';
 const withPWA = isProd ? require('next-pwa')({
   dest: 'public',
   register: true,
-  skipWaiting: true,
-  workboxOptions: {
-    disableDevLogs: true,
-  }
+  skipWaiting: true
 }) : (config) => config;
 
 const nextConfig = withPWA({
