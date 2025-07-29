@@ -4,8 +4,8 @@
 import { SessionProvider } from 'next-auth/react';
 import { Inter } from 'next/font/google';
 import { usePathname } from 'next/navigation';
-import Navbar from '@/components/Navbar';
-import FloatingQuickActions from '@/components/FloatingQuickActions';
+import { Navbar } from '@/components/layout';
+import { FloatingQuickActions } from '@/components/dashboard';
 
 const inter = Inter({ subsets: ['latin'] });
 

@@ -44,18 +44,20 @@ const DashboardStats = ({ allJiras }) => {
       }
 
       // Calculate hours
-      jira.dailyLogs.forEach(log => {
-        const logDate = new Date(log.logDate);
-        const hours = parseFloat(log.timeSpent || 0);
-        
-        if (logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear) {
-          monthlyHours += hours;
-        }
-        
-        if (logDate.toDateString() === today.toDateString()) {
-          todayHours += hours;
-        }
-      });
+      if (Array.isArray(jira.dailyLogs)) {
+        jira.dailyLogs.forEach(log => {
+          const logDate = new Date(log.logDate);
+          const hours = parseFloat(log.timeSpent || 0);
+          
+          if (logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear) {
+            monthlyHours += hours;
+          }
+          
+          if (logDate.toDateString() === today.toDateString()) {
+            todayHours += hours;
+          }
+        });
+      }
     });
 
     return {

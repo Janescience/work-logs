@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import Jira from '@/models/jira.model';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
@@ -82,7 +82,7 @@ export async function GET(req) {
 
 
     // --- Create Workbook ---
-    const workbook = XLSX.utils.book_new();
+    const workbook = new ExcelJS.Workbook();
 
     // --- Summary Sheet Logic ---
     const ws_summary_headers = [
@@ -136,8 +136,11 @@ export async function GET(req) {
       };
     });
 
-    const ws_summary = XLSX.utils.json_to_sheet(summaryData, { header: ws_summary_headers });
-    XLSX.utils.book_append_sheet(workbook, ws_summary, "Summary");
+    const ws_summary = workbook.addWorksheet("Summary");
+    ws_summary.addRow(ws_summary_headers);
+    summaryData.forEach(row => {
+      ws_summary.addRow(ws_summary_headers.map(header => row[header] || ''));
+    });
 
     // --- Detail Sheet Logic ---
     const ws_detail_headers = ["No.", "Reference Project/JIRA#", "Description", "Total HRs"];
@@ -194,11 +197,14 @@ export async function GET(req) {
       return row;
     });
 
-    const ws_detail = XLSX.utils.json_to_sheet(detailDataArray, { header: ws_detail_headers });
-    XLSX.utils.book_append_sheet(workbook, ws_detail, "Detail");
+    const ws_detail = workbook.addWorksheet("Detail");
+    ws_detail.addRow(ws_detail_headers);
+    detailDataArray.forEach(row => {
+      ws_detail.addRow(ws_detail_headers.map(header => row[header] || ''));
+    });
 
     // --- Generate Excel Buffer and Send Response ---
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const excelBuffer = await workbook.xlsx.writeBuffer();
     const filename = `work_log_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}_${Date.now()}.xlsx`;
     const headers = new Headers({
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

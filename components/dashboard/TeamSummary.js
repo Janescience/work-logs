@@ -238,7 +238,7 @@ const TeamSummary = ({ teamData }) => {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 text-black">
       {/* Main Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard

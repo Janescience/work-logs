@@ -10,138 +10,86 @@ import {
   faTachometerAlt, faProjectDiagram, faUsers, faFileAlt,
   faBell, faRocket
 } from '@fortawesome/free-solid-svg-icons';
-import YearlySummaryChart from '@/components/YearlySummaryChart';
-import ITLeadAlerts from '@/components/ITLeadAlerts';
-import ResourceHeatmap from '@/components/ResourceHeatmap';
-import TrendAnalysis from '@/components/TrendAnalysis';
-import QuickActions from '@/components/QuickActions';
-import AdvancedReportGenerator from '@/components/AdvancedReportGenerator';
-
-// --- Helper Components (defined in the same file for simplicity) ---
-
-const getAvatarUrl = (username) => `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(username)}`;
+import { 
+  LoadingSpinner, ErrorMessage, PageHeader, StatCard, 
+  TabNavigation, SummaryTable, TeamGrid, Button, Select
+} from '@/components/ui';
+import { YearlySummaryChart, ResourceHeatmap, TrendAnalysis, QuickActions, AdvancedReportGenerator } from '@/components/reports';
+import { ITLeadAlerts } from '@/components/dashboard';
 
 const ProjectSummaryTable = ({ data }) => {
-    const grandTotal = data.reduce((acc, group) => {
-        const groupTotal = group.projects.reduce((groupAcc, proj) => {
-            groupAcc.total += proj.totalHours;
-            groupAcc.nonCore += proj.nonCoreHours;
-            groupAcc.core += proj.coreHours;
-            return groupAcc;
+    const columns = [
+        { key: 'name', title: 'Summary', align: 'left' },
+        { key: 'nonCore', title: 'Non-Core', align: 'right' },
+        { key: 'core', title: 'Core', align: 'right' },
+        { key: 'total', title: 'Total', align: 'right' }
+    ];
+
+    const calculateGroupTotal = (group) => {
+        return group.projects.reduce((acc, proj) => {
+            acc.total += proj.totalHours;
+            acc.nonCore += proj.nonCoreHours;
+            acc.core += proj.coreHours;
+            return acc;
         }, { total: 0, nonCore: 0, core: 0 });
-        
-        acc.total += groupTotal.total;
-        acc.nonCore += groupTotal.nonCore;
-        acc.core += groupTotal.core;
-        return acc;
-    }, { total: 0, nonCore: 0, core: 0 });
+    };
+
+    const calculateGrandTotal = (data) => {
+        return data.reduce((acc, group) => {
+            const groupTotal = calculateGroupTotal(group);
+            acc.total += groupTotal.total;
+            acc.nonCore += groupTotal.nonCore;
+            acc.core += groupTotal.core;
+            return acc;
+        }, { total: 0, nonCore: 0, core: 0 });
+    };
+
+    const renderGroupHeader = (group) => group._id;
+
+    const renderRow = (project) => (
+        <>
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 pl-8">{project.name}</td>
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono">{project.nonCoreHours.toFixed(1)}</td>
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono">{project.coreHours.toFixed(1)}</td>
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-800">{project.totalHours.toFixed(1)}</td>
+        </>
+    );
+
+    // Transform data to match SummaryTable format
+    const transformedData = data.map(group => ({
+        ...group,
+        items: group.projects.sort((a, b) => b.totalHours - a.totalHours)
+    }));
 
     return (
-        <div className="mb-8">
-            <h2 className="text-2xl font-light text-black mb-4">Project Performance</h2>
-            <div className="overflow-x-auto border border-black bg-white  p-4">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-100">
-                        <tr>
-                            <th className="px-6 py-3 text-left  font-medium text-gray-800 uppercase tracking-wider">Summary</th>
-                            <th className="px-6 py-3 text-right font-medium text-gray-800 uppercase tracking-wider">Non-Core</th>
-                            <th className="px-6 py-3 text-right font-medium text-gray-800 uppercase tracking-wider">Core</th>
-                            <th className="px-6 py-3 text-right font-medium text-gray-800 uppercase tracking-wider">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {data.length > 0 ? data.map(group => {
-                            const groupTotal = group.projects.reduce((acc, proj) => {
-                                acc.total += proj.totalHours;
-                                acc.nonCore += proj.nonCoreHours;
-                                acc.core += proj.coreHours;
-                                return acc;
-                            }, { total: 0, nonCore: 0, core: 0 });
-
-                            return (
-                                <React.Fragment key={group._id}>
-                                    <tr className="bg-gray-50">
-                                        <td className="px-6 py-3 font-bold text-black" colSpan="4">{group._id}</td>
-                                    </tr>
-                                    {group.projects.sort((a,b) => b.totalHours - a.totalHours).map(proj => (
-                                        <tr key={proj.name}>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 pl-8">{proj.name}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono">{proj.nonCoreHours.toFixed(1)}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono">{proj.coreHours.toFixed(1)}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-800">{proj.totalHours.toFixed(1)}</td>
-                                        </tr>
-                                    ))}
-                                    <tr className="bg-gray-100">
-                                        <td className="px-6 py-3 text-right font-bold text-black"></td>
-                                        <td className="px-6 py-3 text-right font-bold text-black font-mono">{groupTotal.nonCore.toFixed(1)}</td>
-                                        <td className="px-6 py-3 text-right font-bold text-black font-mono">{groupTotal.core.toFixed(1)}</td>
-                                        <td className="px-6 py-3 text-right font-extrabold text-black font-mono">{groupTotal.total.toFixed(1)}</td>
-                                    </tr>
-                                </React.Fragment>
-                            );
-                        }) : (
-                            <tr>
-                                <td colSpan="4" className="px-6 py-10 text-center text-gray-500">No project data for the selected period.</td>
-                            </tr>
-                        )}
-                    </tbody>
-                     <tfoot>
-                        <tr className="bg-black text-white">
-                            <td className="px-6 py-3 font-bold ">Grand Total</td>
-                            <td className="px-6 py-3 text-right font-bold font-mono">{grandTotal.nonCore.toFixed(1)}</td>
-                            <td className="px-6 py-3 text-right font-bold font-mono">{grandTotal.core.toFixed(1)}</td>
-                            <td className="px-6 py-3 text-right font-bold font-mono">{grandTotal.total.toFixed(1)}</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        </div>
+        <SummaryTable
+            title="Project Performance"
+            data={transformedData}
+            columns={columns}
+            calculateGroupTotal={calculateGroupTotal}
+            calculateGrandTotal={calculateGrandTotal}
+            renderGroupHeader={renderGroupHeader}
+            renderRow={renderRow}
+            emptyMessage="No project data for the selected period."
+        />
     );
 };
 
-// --- UPDATED IndividualSummary component ---
 const IndividualSummary = ({ data }) => {
-    const capacity = 22 * 8; 
-
-    // FIX: Use the 'type' field from the user object to filter
-    const nonCoreTeam = data.filter(item => item.user.type === 'Non-Core');
-    const coreTeam = data.filter(item => item.user.type === 'Core');
-
-    const MemberRow = ({ item }) => (
-        <div className="flex items-center p-3 border-b border-gray-100 last:border-b-0">
-            <img src={getAvatarUrl(item.user.username)} alt="avatar" className="w-10 h-10 rounded-full mr-4" />
-            <div className="flex-grow">
-                <div className="font-semibold text-black uppercase">{item.user.name ? item.user.name : item.user.username}</div>
-                <div className="text-xs text-gray-500">{item.user.teamName || 'No Team Assigned'}</div>
-                <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                    <div className="bg-black h-1.5 rounded-full" style={{ width: `${Math.min((item.totalHours / capacity) * 100, 100)}%` }}></div>
-                </div>
-            </div>
-            <div className="text-right ml-4 min-w-[80px]">
-                <span className="text-xl font-light text-black">{item.totalHours.toFixed(1)}</span>
-                <span className="text-sm text-gray-500">/{capacity}</span>
-            </div>
-        </div>
-    );
+    const capacity = 22 * 8;
+    const teams = [
+        { type: 'Non-Core', label: 'NON-CORE' },
+        { type: 'Core', label: 'CORE' }
+    ];
 
     return (
-         <div className="mb-8">
-            <h2 className="text-2xl font-light text-black mb-4">Individual Efforts</h2>
-             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="border border-black p-4 bg-white">
-                    <h3 className="font-semibold mb-3 border-b pb-2">NON-CORE</h3>
-                    <div className="space-y-1">
-                       {nonCoreTeam.length > 0 ? nonCoreTeam.map(item => <MemberRow key={item.user._id} item={item} />) : <p className="text-center text-gray-500 py-4">No non-core members found.</p>}
-                    </div>
-                </div>
-                <div className="border border-black p-4 bg-white">
-                     <h3 className="font-semibold mb-3 border-b pb-2">CORE</h3>
-                     <div className="space-y-1">
-                        {coreTeam.length > 0 ? coreTeam.map(item => <MemberRow key={item.user._id} item={item} />) : <p className="text-center text-gray-500 py-4">No core members found.</p>}
-                    </div>
-                </div>
-            </div>
-         </div>
+        <TeamGrid
+            title="Individual Efforts"
+            data={data}
+            teams={teams}
+            capacity={capacity}
+            emptyMessage="No members found."
+        />
     );
 };
 
@@ -272,79 +220,55 @@ export default function ITLeadSummaryPage() {
                         
                         {/* Date Filters */}
                         <div className="flex items-center gap-4">
-                            <select 
-                                name="month" 
-                                value={date.month} 
-                                onChange={handleDateChange} 
-                                className="px-3 py-2 text-black bg-white border border-gray-300 rounded-lg focus:border-black focus:outline-none"
-                            >
-                                {Array.from({ length: 12 }, (_, i) => (
-                                    <option key={i + 1} value={i + 1}>
-                                        {new Date(0, i).toLocaleString('default', { month: 'long' })}
-                                    </option>
-                                ))}
-                            </select>
-                            <select 
-                                name="year" 
-                                value={date.year} 
-                                onChange={handleDateChange} 
-                                className="px-3 py-2 text-black bg-white border border-gray-300 rounded-lg focus:border-black focus:outline-none"
-                            >
-                                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
-                                    <option key={y} value={y}>{y}</option>
-                                ))}
-                            </select>
+                            <Select
+                                variant="outline"
+                                value={date.month}
+                                onChange={(e) => handleDateChange({ target: { name: 'month', value: e.target.value } })}
+                                options={Array.from({ length: 12 }, (_, i) => ({
+                                    value: i + 1,
+                                    label: new Date(0, i).toLocaleString('default', { month: 'long' })
+                                }))}
+                            />
+                            <Select
+                                variant="outline"
+                                value={date.year}
+                                onChange={(e) => handleDateChange({ target: { name: 'year', value: e.target.value } })}
+                                options={Array.from({ length: 5 }, (_, i) => {
+                                    const year = new Date().getFullYear() - i;
+                                    return { value: year, label: year.toString() };
+                                })}
+                            />
                         </div>
                     </div>
 
                     {/* Tab Navigation */}
-                    <div className="mt-6 border-b border-gray-200 -mb-px">
-                        <nav className="flex space-x-8">
-                            <button
-                                onClick={() => setActiveTab('overview')}
-                                className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-                                    activeTab === 'overview'
-                                        ? 'border-black text-gray-900'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
-                            >
-                                <FontAwesomeIcon icon={faTachometerAlt} className="text-xs" />
-                                Overview
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('projects')}
-                                className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-                                    activeTab === 'projects'
-                                        ? 'border-black text-gray-900'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
-                            >
-                                <FontAwesomeIcon icon={faProjectDiagram} className="text-xs" />
-                                Projects
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('teams')}
-                                className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-                                    activeTab === 'teams'
-                                        ? 'border-black text-gray-900'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
-                            >
-                                <FontAwesomeIcon icon={faUsers} className="text-xs" />
-                                Teams
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('reports')}
-                                className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-                                    activeTab === 'reports'
-                                        ? 'border-black text-gray-900'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
-                            >
-                                <FontAwesomeIcon icon={faFileAlt} className="text-xs" />
-                                Reports
-                            </button>
-                        </nav>
+                    <div className="mt-6">
+                        <TabNavigation
+                            tabs={[
+                                {
+                                    id: 'overview',
+                                    label: 'Overview',
+                                    icon: <FontAwesomeIcon icon={faTachometerAlt} className="text-xs" />
+                                },
+                                {
+                                    id: 'projects',
+                                    label: 'Projects',
+                                    icon: <FontAwesomeIcon icon={faProjectDiagram} className="text-xs" />
+                                },
+                                {
+                                    id: 'teams',
+                                    label: 'Teams',
+                                    icon: <FontAwesomeIcon icon={faUsers} className="text-xs" />
+                                },
+                                {
+                                    id: 'reports',
+                                    label: 'Reports',
+                                    icon: <FontAwesomeIcon icon={faFileAlt} className="text-xs" />
+                                }
+                            ]}
+                            activeTab={activeTab}
+                            onTabChange={setActiveTab}
+                        />
                     </div>
                 </div>
 
@@ -385,22 +309,30 @@ export default function ITLeadSummaryPage() {
                                                 
                                                 return (
                                                     <div className="grid grid-cols-4 gap-4">
-                                                        <div className="text-center p-3 border border-gray-200">
-                                                            <div className="text-2xl font-light text-black">{totalHours.toFixed(0)}</div>
-                                                            <p className="text-xs text-gray-600">Total Hours</p>
-                                                        </div>
-                                                        <div className="text-center p-3 border border-gray-200">
-                                                            <div className="text-2xl font-light text-black">{totalTasks}</div>
-                                                            <p className="text-xs text-gray-600">Active Tasks</p>
-                                                        </div>
-                                                        <div className="text-center p-3 border border-gray-200">
-                                                            <div className="text-2xl font-light text-black">{totalProjects}</div>
-                                                            <p className="text-xs text-gray-600">Projects</p>
-                                                        </div>
-                                                        <div className="text-center p-3 border border-gray-200">
-                                                            <div className="text-2xl font-light text-black">{teamSize}</div>
-                                                            <p className="text-xs text-gray-600">Team Members</p>
-                                                        </div>
+                                                        <StatCard
+                                                            title="Total Hours"
+                                                            value={totalHours.toFixed(0)}
+                                                            icon={faChartBar}
+                                                            className="border border-gray-200"
+                                                        />
+                                                        <StatCard
+                                                            title="Active Tasks"
+                                                            value={totalTasks}
+                                                            icon={faExclamationTriangle}
+                                                            className="border border-gray-200"
+                                                        />
+                                                        <StatCard
+                                                            title="Projects"
+                                                            value={totalProjects}
+                                                            icon={faProjectDiagram}
+                                                            className="border border-gray-200"
+                                                        />
+                                                        <StatCard
+                                                            title="Team Members"
+                                                            value={teamSize}
+                                                            icon={faUsers}
+                                                            className="border border-gray-200"
+                                                        />
                                                     </div>
                                                 );
                                             })()}
@@ -658,42 +590,46 @@ export default function ITLeadSummaryPage() {
                                             <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
                                                 <h3 className="font-semibold text-black mb-2">Advanced Generator</h3>
                                                 <p className="text-sm text-gray-600 mb-3">Enterprise-level reports with multiple formats</p>
-                                                <button 
+                                                <Button 
                                                     onClick={() => setShowReportGenerator(true)}
-                                                    className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm font-medium"
+                                                    className="w-full"
+                                                    size="sm"
                                                 >
                                                     Open Generator
-                                                </button>
+                                                </Button>
                                             </div>
                                             <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
                                                 <h3 className="font-semibold text-black mb-2">Monthly Summary</h3>
                                                 <p className="text-sm text-gray-600 mb-3">Comprehensive monthly performance report</p>
-                                                <button 
+                                                <Button 
                                                     onClick={() => handleQuickAction('report_generated', { type: 'monthly' })}
-                                                    className="text-black hover:text-gray-700 text-sm font-medium"
+                                                    variant="link"
+                                                    size="sm"
                                                 >
                                                     Generate Report →
-                                                </button>
+                                                </Button>
                                             </div>
                                             <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
                                                 <h3 className="font-semibold text-black mb-2">Resource Utilization</h3>
                                                 <p className="text-sm text-gray-600 mb-3">Team capacity and workload analysis</p>
-                                                <button 
+                                                <Button 
                                                     onClick={() => handleQuickAction('report_generated', { type: 'utilization' })}
-                                                    className="text-black hover:text-gray-700 text-sm font-medium"
+                                                    variant="link"
+                                                    size="sm"
                                                 >
                                                     Generate Report →
-                                                </button>
+                                                </Button>
                                             </div>
                                             <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
                                                 <h3 className="font-semibold text-black mb-2">Project Portfolio</h3>
                                                 <p className="text-sm text-gray-600 mb-3">Complete project performance overview</p>
-                                                <button 
+                                                <Button 
                                                     onClick={() => handleQuickAction('report_generated', { type: 'portfolio' })}
-                                                    className="text-black hover:text-gray-700 text-sm font-medium"
+                                                    variant="link"
+                                                    size="sm"
                                                 >
                                                     Generate Report →
-                                                </button>
+                                                </Button>
                                             </div>
                                         </div>
                                         <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">

@@ -19,9 +19,8 @@ import {
 import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'react-toastify';
 import { useSession } from 'next-auth/react';
-import MyJiras from '@/components/MyJiras'; 
-import JiraFormModal from '@/components/JiraFormModal';
-import DeploymentHistory from '@/components/DeploymentHistory';
+import { MyJiras, JiraFormModal } from '@/components/jira';
+import { DeploymentHistory } from '@/components/dashboard';
 
 const FloatingQuickActions = () => {
   const router = useRouter();

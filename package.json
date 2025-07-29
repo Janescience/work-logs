@@ -21,14 +21,14 @@
         "jszip": "^3.10.1",
         "mongodb": "^6.16.0",
         "mongoose": "^8.15.1",
-        "next": "14.1.0",
+        "next": "^14.2.30",
         "next-auth": "^4.24.11",
         "next-pwa": "^5.6.0",
         "react": "^18",
         "react-dom": "^18",
         "react-draggable": "^4.5.0",
         "react-toastify": "^11.0.5",
-        "xlsx": "^0.18.5"
+        "exceljs": "^4.4.0"
     },
     "devDependencies": {
         "@types/node": "^20",
@@ -36,7 +36,7 @@
         "@types/react-dom": "^18",
         "autoprefixer": "^10.4.21",
         "eslint": "^8",
-        "eslint-config-next": "14.1.0",
+        "eslint-config-next": "^14.2.30",
         "postcss": "^8.5.3",
         "tailwindcss": "^3.4.17",
         "typescript": "^5"

@@ -74,7 +74,7 @@ export default function Navbar() {
 
     return (
         <nav ref={navRef} className="fixed top-0 left-0 w-full h-16 bg-white text-black z-50 border-b border-black">
-            <div className="grid grid-cols-3 items-center h-16 px-8">
+            <div className="grid grid-cols-2 lg:grid-cols-3 items-center h-16 px-8">
                 {/* Logo - Left */}
                 <div className="flex justify-start">
                     <Link href="/" className="flex items-center text-2xl font-mono !text-black hover:text-gray-600 transition-colors">
@@ -144,7 +144,7 @@ export default function Navbar() {
                                                 : '!text-gray-500 hover:!text-black'
                                         }`}
                                     >
-                                        IT LEAD
+                                        BACKLOG
                                     </Link>
                                 )}
 
@@ -157,7 +157,7 @@ export default function Navbar() {
                                                 : '!text-gray-500 hover:!text-black'
                                         }`}
                                     >
-                                        TEAM LEAD
+                                        MY TEAM
                                     </Link>
                                 )}
 
@@ -170,7 +170,7 @@ export default function Navbar() {
                                                 : '!text-gray-500 hover:!text-black'
                                         }`}
                                     >
-                                        ADMIN
+                                        USERS
                                     </Link>
                                 )}
                             </div>

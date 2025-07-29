@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronDown, faChevronUp, faSquare, faCheckSquare } from '@fortawesome/free-solid-svg-icons';
-import JiraItem from '@/components/JiraItem';
+import { JiraItem } from '@/components/jira';
 
 const TaskListView = ({ 
   jiras, 
@@ -118,9 +118,11 @@ const TaskListView = ({
     
     groupJiras.forEach(jira => {
       if (jira.actualStatus?.toLowerCase() === 'in progress') activeCount++;
-      jira.dailyLogs.forEach(log => {
-        totalHours += parseFloat(log.timeSpent || 0);
-      });
+      if (Array.isArray(jira.dailyLogs)) {
+        jira.dailyLogs.forEach(log => {
+          totalHours += parseFloat(log.timeSpent || 0);
+        });
+      }
     });
 
     return { totalHours, activeCount };
@@ -225,7 +227,7 @@ const TaskListView = ({
                           rollbackOptimisticLogUpdate={rollbackOptimisticLogUpdate}
                           deleteOptimisticLog={deleteOptimisticLog}
                           rollbackOptimisticLogDelete={rollbackOptimisticLogDelete}
-                          externalStatus={externalStatuses[jira.jiraNumber]}
+                          externalStatus={externalStatuses?.[jira.jiraNumber]}
                         />
                       </div>
                     </div>

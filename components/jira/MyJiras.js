@@ -61,12 +61,18 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
 
     try {
       // Fetch external JIRAs
+      console.log('🔍 Fetching JIRAs for email:', userEmail);
       const externalRes = await fetch(`/api/my-jiras?email=${encodeURIComponent(userEmail)}`);
+      console.log('📡 External API response status:', externalRes.status);
+      
       if (!externalRes.ok) {
         const errorData = await externalRes.json();
+        console.error('❌ External API error:', errorData);
         throw new Error(errorData.error || "Failed to load JIRAs from external API");
       }
       const externalData = await externalRes.json();
+      console.log('📊 External API data:', externalData);
+      console.log('📋 Issues found:', externalData.issues?.length || 0);
 
       // Fetch internal JIRAs
       const internalRes = await fetch(`/api/jiras`);
@@ -80,6 +86,7 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
       const jiraNumbersFromInternalData = internalData.jiras ? internalData.jiras.map(jira => jira.jiraNumber) : [];
       setInternalJiraNumbers(new Set(jiraNumbersFromInternalData));
     } catch (err) {
+      console.error('💥 Error in fetchJiras:', err);
       setError(err.message);
     } finally {
       setLoading(false);

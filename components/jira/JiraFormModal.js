@@ -1,202 +1,241 @@
 // components/JiraFormModal.js
 'use client';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Draggable from 'react-draggable';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
+import { useFormState } from '@/hooks/ui';
+import { useApiData, useAsyncState } from '@/hooks/api';
 
 const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
-  const [projects, setProjects] = useState([]);
-  const [services, setServices] = useState([]);
-  const [actualStatuses, setActualStatuses] = useState([]);
+  // Stable transform functions
+  const projectsTransform = useCallback((data) => data.projects || [], []);
+  const servicesTransform = useCallback((data) => data.services || [], []);
 
-  // Form States
-  const [jiraType, setJiraType] = useState('My Jira'); // 'Jira' or 'Non-Jira'
-  const [selectedJiraFromDdl, setSelectedJiraFromDdl] = useState(''); // For Jira type dropdown
+  // API data hooks - only fetch when modal is open
+  const { data: projects = [] } = useApiData('/api/projects', [], {
+    transform: projectsTransform,
+    skip: () => !isOpen
+  });
+  
+  const { data: services = [] } = useApiData('/api/services', [], {
+    transform: servicesTransform,
+    skip: () => !isOpen
+  });
+  
+  // Define default statuses instead of fetching from API
+  const actualStatuses = [
+    'In Progress',
+    'Done', 
+    'Cancel'
+  ];
 
-  const [jiraNumber, setJiraNumber] = useState('');
-  const [description, setDescription] = useState('');
-  const [projectName, setProjectName] = useState('');
-  const [projectId, setProjectId] = useState('');
-  const [serviceName, setServiceName] = useState('');
-  const [assignee, setAssignee] = useState('');
-  const [effortEstimation, setEffortEstimation] = useState('');
-  const [jiraStatus, setJiraStatus] = useState(''); // Live Jira status from API or user input
-  const [actualStatus, setActualStatus] = useState('');
-  const [relatedJira, setRelatedJira] = useState('');
-  const [environment, setEnvironment] = useState('');
-  const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
-  const [envDetail, setEnvDetail] = useState('');
-  const [sqlDetail, setSqlDetail] = useState('');
-  const [deploySitDate, setDeploySitDate] = useState('');
-  const [deployUatDate, setDeployUatDate] = useState('');
-  const [deployPreprodDate, setDeployPreprodDate] = useState('');
-  const [deployProdDate, setDeployProdDate] = useState('');
+  // Form state with validation
+  const initialFormValues = useMemo(() => ({
+    jiraType: 'My Jira',
+    selectedJiraFromDdl: '',
+    jiraNumber: '',
+    description: '',
+    projectName: '',
+    projectId: '',
+    serviceName: '',
+    jiraStatus: '',
+    actualStatus: '',
+    envDetail: '',
+    sqlDetail: '',
+    deploySitDate: '',
+    deployUatDate: '',
+    deployPreprodDate: '',
+    deployProdDate: ''
+  }), []);
 
-  const [availableJiras, setAvailableJiras] = useState([]); // Jiras fetched from /api/my-jiras
-  const [loadingAvailableJiras, setLoadingAvailableJiras] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [availableJirasLoaded, setAvailableJirasLoaded] = useState(false); // Track if jiras have been loaded
+  const validationRules = useMemo(() => ({
+    jiraNumber: {
+      required: 'JIRA Number is required',
+      minLength: 3
+    },
+    description: {
+      required: 'Description is required',
+      minLength: 5
+    },
+    projectName: {
+      required: 'Project is required'
+    }
+  }), []);
+
+  const {
+    values,
+    errors,
+    touched,
+    isSubmitting,
+    setIsSubmitting,
+    setValue,
+    validateAll,
+    reset,
+    getFieldProps
+  } = useFormState(initialFormValues, validationRules);
+
+  // Available JIRAs async state
+  const {
+    data: availableJiras,
+    loading: loadingAvailableJiras,
+    execute: fetchAvailableJiras
+  } = useAsyncState([]);
+  
+  // Ensure availableJiras is always an array
+  const safeAvailableJiras = useMemo(() => 
+    Array.isArray(availableJiras) ? availableJiras : [], 
+    [availableJiras]
+  );
+
+  const [availableJirasLoaded, setAvailableJirasLoaded] = useState(false);
 
   const nodeRef = useRef(null); // For react-draggable
 
   const isEditMode = useMemo(() => !!jira, [jira]);
 
-  // Fetch initial data (projects, services, statuses)
-  useEffect(() => {
-    fetch('/api/projects')
-      .then(res => res.json())
-      .then(data => setProjects(data.projects || []));
+  // Remove unused config loading
 
-    fetch('/api/services')
-      .then(res => res.json())
-      .then(data => setServices(data.services || []));
-
-    import('@/data/config').then(config => {
-      setActualStatuses(config.actualStatuses);
-    });
-  }, []);
-
-  // Fetch available JIRAs from API for DDL, runs when userEmail is available
-  useEffect(() => {
-    const fetchAvailableJiras = async () => {
-      if (!userEmail) return;
-
-      setLoadingAvailableJiras(true);
-      setAvailableJirasLoaded(false);
-      try {
+  // Fetch available JIRAs when modal opens and userEmail is available  
+  const fetchJiraData = useCallback(async () => {
+    if (!userEmail) return;
+    
+    console.log('Fetching JIRAs for email:', userEmail); // Debug log
+    setAvailableJirasLoaded(false);
+    
+    try {
+      await fetchAvailableJiras(async () => {
         const res = await fetch(`/api/my-jiras?email=${encodeURIComponent(userEmail)}`);
         if (!res.ok) {
           throw new Error(`Failed to fetch available JIRAs, status: ${res.status}`);
         }
         const data = await res.json();
-        setAvailableJiras(data.issues || []);
-        setAvailableJirasLoaded(true);
-      } catch (error) {
-        console.error('Error fetching available JIRAs:', error);
-        toast.error('Failed to load JIRAs from external API.');
-        setAvailableJiras([]);
-        setAvailableJirasLoaded(true);
-      } finally {
-        setLoadingAvailableJiras(false);
-      }
-    };
-    fetchAvailableJiras();
-  }, [userEmail]); // Depend on userEmail
+        console.log('JIRA API response:', data); // Debug log
+        // JIRA API returns { issues: [...] } structure
+        return data.issues || [];
+      });
+      setAvailableJirasLoaded(true);
+    } catch (error) {
+      console.error('Error fetching available JIRAs:', error);
+      toast.error('Failed to load JIRAs from external API.');
+      setAvailableJirasLoaded(true);
+    }
+  }, [userEmail, fetchAvailableJiras]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchJiraData();
+    }
+  }, [isOpen, fetchJiraData]);
 
   // Effect for edit mode - populate form when opening in edit mode
   useEffect(() => {
     if (isOpen && jira) {
-      // Always populate these fields immediately
-      setJiraNumber(jira.jiraNumber || '');
-      setDescription(jira.description || '');
-      // Handle both new projectId and legacy projectName
-      if (jira.projectId) {
-        setProjectId(typeof jira.projectId === 'object' ? jira.projectId._id : jira.projectId);
-        setProjectName(typeof jira.projectId === 'object' ? jira.projectId.name : jira.projectName || '');
-      } else {
-        setProjectName(jira.projectName || '');
-        setProjectId('');
-      }
-      setServiceName(jira.serviceName || '');
-      setAssignee(jira.assignee || '');
-      setEffortEstimation(jira.effortEstimation || '');
-      setJiraStatus(jira.jiraStatus || ''); // This will now be set immediately
-      setActualStatus(jira.actualStatus || '');
-      setRelatedJira(jira.relatedJira || '');
-      setEnvironment(jira.environment || '');
-      setDueDate(jira.dueDate ? new Date(jira.dueDate).toISOString().split('T')[0] : '');
-      setEnvDetail(jira.envDetail || '');
-      setSqlDetail(jira.sqlDetail || '');
-      setDeploySitDate(jira.deploySitDate ? new Date(jira.deploySitDate).toISOString().split('T')[0] : '');
-      setDeployUatDate(jira.deployUatDate ? new Date(jira.deployUatDate).toISOString().split('T')[0] : '');
-      setDeployPreprodDate(jira.deployPreprodDate ? new Date(jira.deployPreprodDate).toISOString().split('T')[0] : '');
-      setDeployProdDate(jira.deployProdDate ? new Date(jira.deployProdDate).toISOString().split('T')[0] : '');
-
-      // Set initial jira type - default to 'Other' until we can verify
-      setJiraType('Other');
-      setSelectedJiraFromDdl('');
+      const formData = {
+        jiraNumber: jira.jiraNumber || '',
+        description: jira.description || '',
+        projectName: jira.projectId 
+          ? (typeof jira.projectId === 'object' ? jira.projectId.name : jira.projectName || '')
+          : (jira.projectName || ''),
+        projectId: jira.projectId 
+          ? (typeof jira.projectId === 'object' ? jira.projectId._id : jira.projectId)
+          : '',
+        serviceName: jira.serviceName || '',
+        jiraStatus: jira.jiraStatus || '',
+        actualStatus: jira.actualStatus || '',
+        envDetail: jira.envDetail || '',
+        sqlDetail: jira.sqlDetail || '',
+        deploySitDate: jira.deploySitDate ? new Date(jira.deploySitDate).toISOString().split('T')[0] : '',
+        deployUatDate: jira.deployUatDate ? new Date(jira.deployUatDate).toISOString().split('T')[0] : '',
+        deployPreprodDate: jira.deployPreprodDate ? new Date(jira.deployPreprodDate).toISOString().split('T')[0] : '',
+        deployProdDate: jira.deployProdDate ? new Date(jira.deployProdDate).toISOString().split('T')[0] : '',
+        jiraType: 'Other',
+        selectedJiraFromDdl: ''
+      };
+      
+      // Populate form with all values at once
+      Object.entries(formData).forEach(([key, value]) => {
+        setValue(key, value);
+      });
+    } else if (isOpen && !jira) {
+      // Reset form for new item
+      reset();
     }
-  }, [isOpen, jira]); // Only depend on isOpen and jira
+  }, [isOpen, jira, setValue, reset]);
 
   // Separate effect to determine jira type after availableJiras are loaded
   useEffect(() => {
-    if (isOpen && jira && availableJirasLoaded && availableJiras.length > 0) {
-      const isExternalJira = availableJiras.some(externalJira => externalJira.key === jira.jiraNumber);
+    if (isOpen && jira && availableJirasLoaded && safeAvailableJiras.length > 0) {
+      const currentJiraNumber = jira.jiraNumber || '';
+      const isExternalJira = safeAvailableJiras.some(externalJira => externalJira.key === currentJiraNumber);
       if (isExternalJira) {
-        setJiraType('My Jira');
-        setSelectedJiraFromDdl(jira.jiraNumber);
+        setValue('jiraType', 'My Jira');
+        setValue('selectedJiraFromDdl', currentJiraNumber);
         
         // Update jiraStatus from the external JIRA if found
-        const externalJiraData = availableJiras.find(j => j.key === jira.jiraNumber);
+        const externalJiraData = safeAvailableJiras.find(j => j.key === currentJiraNumber);
         if (externalJiraData && externalJiraData.fields?.status?.name) {
-          setJiraStatus(externalJiraData.fields.status.name);
+          setValue('jiraStatus', externalJiraData.fields.status.name);
         }
       } else {
-        setJiraType('Other');
-        setSelectedJiraFromDdl('');
+        setValue('jiraType', 'Other');
+        setValue('selectedJiraFromDdl', '');
       }
     }
-  }, [isOpen, jira, availableJiras, availableJirasLoaded]);
+  }, [isOpen, jira, availableJirasLoaded, setValue, safeAvailableJiras]);
 
-  // Reset form when closing or opening in add mode
-  useEffect(() => {
-    if (isOpen && !jira) {
-      resetForm();
-    }
-  }, [isOpen, jira]);
+  // This is now handled in the main useEffect above
 
   // Handle selection from JIRA dropdown
   const handleJiraDdlChange = (e) => {
     const selectedKey = e.target.value;
-    setSelectedJiraFromDdl(selectedKey);
-    const selectedJira = availableJiras.find(j => j.key === selectedKey);
+    setValue('selectedJiraFromDdl', selectedKey);
+    const selectedJira = safeAvailableJiras.find(j => j.key === selectedKey);
     if (selectedJira) {
-      setJiraNumber(selectedJira.key);
-      setDescription(selectedJira.fields?.summary || '');
-      setJiraStatus(selectedJira.fields?.status?.name || 'N/A');
+      setValue('jiraNumber', selectedJira.key);
+      setValue('description', selectedJira.fields?.summary || '');
+      setValue('jiraStatus', selectedJira.fields?.status?.name || 'N/A');
     } else {
-      setJiraNumber('');
-      setDescription('');
-      setJiraStatus('');
+      setValue('jiraNumber', '');
+      setValue('description', '');
+      setValue('jiraStatus', '');
     }
   };
 
   const handleJiraTypeChange = (type) => {
-    setJiraType(type);
+    setValue('jiraType', type);
     // Reset relevant fields when changing type
-    setJiraNumber('');
-    setDescription('');
-    setJiraStatus('');
-    setSelectedJiraFromDdl('');
-    // For simplicity, for now, we don't clear projectName/assignee
-    // but in a real app, you might want to reset them based on type too.
+    setValue('jiraNumber', '');
+    setValue('description', '');
+    setValue('jiraStatus', '');
+    setValue('selectedJiraFromDdl', '');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateAll()) {
+      toast.error('Please fix validation errors before submitting.');
+      return;
+    }
+    
     setIsSubmitting(true);
 
     const jiraData = {
-      jiraNumber: jiraNumber.trim(),
-      description: description.trim(),
-      projectId: projectId,
-      projectName: projectName.trim(), // Keep for backward compatibility
-      serviceName: serviceName.trim(),
-      assignee: assignee.trim(),
-      effortEstimation: parseFloat(effortEstimation) || 0,
-      jiraStatus: jiraStatus.trim(),
-      actualStatus: actualStatus.trim(),
-      relatedJira: relatedJira.trim(),
-      environment: environment.trim(),
-      dueDate: dueDate,
-      envDetail: envDetail.trim(),
-      sqlDetail: sqlDetail.trim(),
-      deploySitDate: deploySitDate,
-      deployUatDate: deployUatDate,
-      deployPreprodDate: deployPreprodDate,
-      deployProdDate: deployProdDate,
+      jiraNumber: values.jiraNumber.trim(),
+      description: values.description.trim(),
+      projectId: values.projectId,
+      projectName: values.projectName.trim(),
+      serviceName: values.serviceName.trim(),
+      jiraStatus: values.jiraStatus.trim(),
+      actualStatus: values.actualStatus.trim(),
+      envDetail: values.envDetail.trim(),
+      sqlDetail: values.sqlDetail.trim(),
+      deploySitDate: values.deploySitDate,
+      deployUatDate: values.deployUatDate,
+      deployPreprodDate: values.deployPreprodDate,
+      deployProdDate: values.deployProdDate,
     };
 
     try {
@@ -207,27 +246,6 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
     }
   };
 
-  const resetForm = () => {
-    setJiraType('My Jira'); // Default to My Jira for new entries
-    setSelectedJiraFromDdl('');
-    setJiraNumber('');
-    setDescription('');
-    setProjectName('');
-    setServiceName('');
-    setAssignee('');
-    setEffortEstimation('');
-    setJiraStatus('');
-    setActualStatus('');
-    setRelatedJira('');
-    setEnvironment('');
-    setDueDate(new Date().toISOString().split('T')[0]);
-    setEnvDetail('');
-    setSqlDetail('');
-    setDeploySitDate('');
-    setDeployUatDate('');
-    setDeployPreprodDate('');
-    setDeployProdDate('');
-  };
 
   if (!isOpen) return null;
 
@@ -256,7 +274,7 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                         className="form-radio text-black no-drag"
                         name="jiraType"
                         value="My Jira"
-                        checked={jiraType === 'My Jira'}
+                        checked={values.jiraType === 'My Jira'}
                         onChange={() => handleJiraTypeChange('My Jira')}
                         disabled={loadingAvailableJiras || isSubmitting}
                       />
@@ -268,7 +286,7 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                         className="form-radio text-black no-drag"
                         name="jiraType"
                         value="Other"
-                        checked={jiraType === 'Other'}
+                        checked={values.jiraType === 'Other'}
                         onChange={() => handleJiraTypeChange('Other')}
                         disabled={isSubmitting}
                       />
@@ -282,41 +300,44 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                   <select
                     id="project_id"
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
-                    value={projectId}
+                    value={values.projectId}
                     onChange={(e) => {
                       const selectedProject = projects.find(p => p._id === e.target.value);
-                      setProjectId(e.target.value);
-                      setProjectName(selectedProject ? selectedProject.name : '');
+                      setValue('projectId', e.target.value);
+                      setValue('projectName', selectedProject ? selectedProject.name : '');
                     }}
                     required
                     disabled={isSubmitting}
                   >
                     <option value="">-- Select Project --</option>
-                    {projects.map(project => (
+                    {Array.isArray(projects) && projects.map(project => (
                       <option key={project._id} value={project._id}>{project.name}</option>
                     ))}
                   </select>
+                  {errors.projectName && touched.projectName && (
+                    <p className="mt-1 text-sm text-red-600">{errors.projectName}</p>
+                  )}
                 </div>
 
                 {/* JIRA Number / DDL or Manual Input (Conditional based on jiraType) */}
-                {jiraType === 'My Jira' ? (
+                {values.jiraType === 'My Jira' ? (
                   <div className="sm:col-span-2">
                     <label htmlFor="jira_select" className="block text-sm font-medium text-gray-700">Select JIRA Issue</label>
                     <div className="mt-1 flex items-center">
                       <select
                         id="jira_select"
                         className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
-                        value={selectedJiraFromDdl}
+                        {...getFieldProps('selectedJiraFromDdl')}
                         onChange={handleJiraDdlChange}
-                        required={jiraType === 'My Jira'}
+                        required={values.jiraType === 'My Jira'}
                         disabled={loadingAvailableJiras || isSubmitting}
                       >
                         <option value="">
                           {loadingAvailableJiras ? 'Loading JIRAs...' : '-- Select JIRA --'}
                         </option>
-                        {availableJiras.map(jiraIssue => (
-                          <option key={jiraIssue.id} value={jiraIssue.key}>
-                            {jiraIssue.key} - {jiraIssue.fields?.summary}
+                        {safeAvailableJiras.map(jiraIssue => (
+                          <option key={jiraIssue.key} value={jiraIssue.key}>
+                            {jiraIssue.key} - {jiraIssue.fields?.summary || jiraIssue.summary}
                           </option>
                         ))}
                       </select>
@@ -331,11 +352,13 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                       id="jira_number"
                       placeholder="IR-XXXX or Internal Key"
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
-                      value={jiraNumber}
-                      onChange={(e) => setJiraNumber(e.target.value)}
+                      {...getFieldProps('jiraNumber')}
                       required
                       disabled={isSubmitting}
                     />
+                    {errors.jiraNumber && touched.jiraNumber && (
+                      <p className="mt-1 text-sm text-red-600">{errors.jiraNumber}</p>
+                    )}
                   </div>
                 )}
 
@@ -345,11 +368,13 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                     type="text"
                     id="description"
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    {...getFieldProps('description')}
                     required
-                    disabled={jiraType === 'My Jira' || isSubmitting} // Disable if My Jira type
+                    disabled={values.jiraType === 'My Jira' || isSubmitting} // Disable if My Jira type
                   />
+                  {errors.description && touched.description && (
+                    <p className="mt-1 text-sm text-red-600">{errors.description}</p>
+                  )}
                 </div>
 
                 <div>
@@ -358,9 +383,8 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                     type="text"
                     id="jira_status"
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
-                    value={jiraStatus}
-                    onChange={(e) => setJiraStatus(e.target.value)} // Allow manual override if needed
-                    disabled={jiraType === 'My Jira' || isSubmitting} // Disable if auto-filled from DDL
+                    {...getFieldProps('jiraStatus')}
+                    disabled={values.jiraType === 'My Jira' || isSubmitting} // Disable if auto-filled from DDL
                     placeholder="Auto-filled from JIRA API"
                   />
                 </div>
@@ -370,8 +394,7 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                   <select
                     id="actual_status"
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
-                    value={actualStatus}
-                    onChange={(e) => setActualStatus(e.target.value)}
+                    {...getFieldProps('actualStatus')}
                     disabled={isSubmitting}
                   >
                     <option value="">-- Select Status --</option>
@@ -386,28 +409,16 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                   <select
                     id="service_name"
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
-                    value={serviceName}
-                    onChange={(e) => setServiceName(e.target.value)}
+                    {...getFieldProps('serviceName')}
                     disabled={isSubmitting}
                   >
                     <option value="">-- Select Service --</option>
-                    {services.map(service => (
+                    {Array.isArray(services) && services.map(service => (
                       <option key={service.name} value={service.name}>{service.name}</option>
                     ))}
                   </select>
                 </div>
 
-                <div>
-                  <label htmlFor="due_date" className="block text-sm font-medium text-gray-700">Due Date</label>
-                  <input
-                    type="date"
-                    id="due_date"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    disabled={isSubmitting}
-                  />
-                </div>
               </div>
 
               {/* RIGHT SECTION (Technical Details & Deployment) */}
@@ -417,19 +428,19 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                   <div className="grid grid-cols-1 gap-2">
                     <div>
                       <label htmlFor="deploy_sit_date" className="block text-sm font-medium text-gray-700">SIT Date</label>
-                      <input type="date" id="deploy_sit_date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag" value={deploySitDate} onChange={(e) => setDeploySitDate(e.target.value)} disabled={isSubmitting} />
+                      <input type="date" id="deploy_sit_date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag" {...getFieldProps('deploySitDate')} disabled={isSubmitting} />
                     </div>
                     <div>
                       <label htmlFor="deploy_uat_date" className="block text-sm font-medium text-gray-700">UAT Date</label>
-                      <input type="date" id="deploy_uat_date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag" value={deployUatDate} onChange={(e) => setDeployUatDate(e.target.value)} disabled={isSubmitting} />
+                      <input type="date" id="deploy_uat_date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag" {...getFieldProps('deployUatDate')} disabled={isSubmitting} />
                     </div>
                     <div>
                       <label htmlFor="deploy_preprod_date" className="block text-sm font-medium text-gray-700">PREPROD Date</label>
-                      <input type="date" id="deploy_preprod_date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag" value={deployPreprodDate} onChange={(e) => setDeployPreprodDate(e.target.value)} disabled={isSubmitting} />
+                      <input type="date" id="deploy_preprod_date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag" {...getFieldProps('deployPreprodDate')} disabled={isSubmitting} />
                     </div>
                     <div>
                       <label htmlFor="deploy_prod_date" className="block text-sm font-medium text-gray-700">PROD Date</label>
-                      <input type="date" id="deploy_prod_date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag" value={deployProdDate} onChange={(e) => setDeployProdDate(e.target.value)} disabled={isSubmitting} />
+                      <input type="date" id="deploy_prod_date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag" {...getFieldProps('deployProdDate')} disabled={isSubmitting} />
                     </div>
                   </div>
                 </div>
@@ -443,8 +454,7 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                     id="env_detail"
                     rows="8"
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
-                    value={envDetail}
-                    onChange={(e) => setEnvDetail(e.target.value)}
+                    {...getFieldProps('envDetail')}
                     placeholder="Environment configurations, variables, etc."
                     disabled={isSubmitting}
                   ></textarea>
@@ -456,8 +466,7 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                     id="sql_detail"
                     rows="8"
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
-                    value={sqlDetail}
-                    onChange={(e) => setSqlDetail(e.target.value)}
+                    {...getFieldProps('sqlDetail')}
                     placeholder="SQL scripts, database changes, etc."
                     disabled={isSubmitting}
                   ></textarea>

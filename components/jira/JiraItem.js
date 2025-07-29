@@ -8,8 +8,7 @@ import {
   faChevronDown, faChevronUp , faRocket
 } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
-import DeployModal from '@/components/DeployModal';
-import DetailModal from '@/components/DetailModal'; // Import the modal component
+import { DeployModal, DetailModal } from '@/components/modals';
 import { formatDate } from '@/utils/dateUtils';
 
 const JiraItem = ({ 

@@ -1,7 +1,7 @@
 // app/(auth)/daily-logs/page.js
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faPlus, 
@@ -9,20 +9,21 @@ import {
   faSearch
 } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { Button, Input, Select, LoadingSpinner, PageHeader, ErrorMessage } from '@/components/ui';
 
-import JiraFormModal from '@/components/JiraFormModal';
-import CalendarModal from '@/components/CalendarModal';
-import TaskListView from '@/components/TaskListView';
-import DailyLogsSummary from '@/components/DailyLogsSummary';
+import { JiraFormModal, TaskListView } from '@/components/jira';
+import { CalendarModal } from '@/components/calendar';
+import { DailyLogsSummary } from '@/components/dashboard';
 
-import useJiras from '@/hooks/useJiras';
+import { useJiras, useApiData } from '@/hooks/api';
+import { useModal, useModals } from '@/hooks/ui';
+import { useAuthGuard } from '@/hooks/auth';
+import { useJiraFilter, useJiraStats } from '@/hooks/data';
 
 export default function DailyLogsPage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const userEmail = session?.user?.email; // Get user email from session
+  // Authentication guard
+  const { session, isReady } = useAuthGuard();
+  const userEmail = session?.user?.email;
 
   const { 
     allJiras, 
@@ -41,188 +42,59 @@ export default function DailyLogsPage() {
     rollbackOptimisticLogDelete 
   } = useJiras();
 
-  // UI States
-  const [showJiraFormModal, setShowJiraFormModal] = useState(false); // Use the new modal state
-  const [editingJira, setEditingJira] = useState(null);
-  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  // Modal states using new hooks
+  const jiraFormModal = useModal();
+  const calendarModal = useModal();
+  const { modals, openModal, closeModal } = useModals(['exportMenu']);
   
-  // Filter States
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [dateRange, setDateRange] = useState('thisMonth');
+  // Filter states using new hook
+  const {
+    filteredData: filteredJiras,
+    searchQuery,
+    setSearchQuery,
+    activeFilters,
+    setFilter
+  } = useJiraFilter(allJiras);
+  
+  // Additional view states
   const [viewBy, setViewBy] = useState('list'); // list, project, service
   const [selectedTasks, setSelectedTasks] = useState([]);
   
   // Export States
   const [exportMonth, setExportMonth] = useState(new Date().getMonth() + 1);
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
-  const [showExportMenu, setShowExportMenu] = useState(false);
   
-  // External Jira statuses
-  const [externalStatuses, setExternalStatuses] = useState({});
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
-
-  // Fetch external JIRA statuses
-  useEffect(() => {
-    const fetchAllJiraStatuses = async () => {
-      if (allJiras.length === 0) return;
-
-      const jiraNumbersToFetch = [...new Set(allJiras.map(j => j.jiraNumber).filter(Boolean))];
-      if (jiraNumbersToFetch.length === 0) return;
-      
-      const jiraNumbersQuery = jiraNumbersToFetch.join(',');
-
-      try {
-        const res = await fetch(`/api/jira-status?jiraNumbers=${jiraNumbersQuery}`);
-        if (!res.ok) {
-          throw new Error(`Failed to fetch statuses, status: ${res.status}`);
-        }
-        const data = await res.json();
-        
-        if (data.statuses) {
-          setExternalStatuses(prev => ({ ...prev, ...data.statuses }));
-        }
-      } catch (error) {
-        console.error("Error fetching all Jira statuses:", error);
-      }
-    };
-
-    fetchAllJiraStatuses();
+  // External Jira statuses using new API hook
+  const jiraNumbers = useMemo(() => {
+    const numbers = [...new Set(allJiras.map(j => j.jiraNumber).filter(Boolean))];
+    return numbers.join(',');
   }, [allJiras]);
-
-  // Filter jiras based on search, status, and date range
-  const filteredJiras = useMemo(() => {
-    let filtered = [...allJiras];
-
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(jira => 
-        jira.jiraNumber?.toLowerCase().includes(query) ||
-        jira.description?.toLowerCase().includes(query) ||
-        jira.projectName?.toLowerCase().includes(query) ||
-        jira.serviceName?.toLowerCase().includes(query)
-      );
+  
+  const {
+    data: externalStatuses = {},
+    loading: statusesLoading,
+    error: statusesError
+  } = useApiData(
+    jiraNumbers ? `/api/jira-status?jiraNumbers=${jiraNumbers}` : null,
+    [jiraNumbers],
+    {
+      skip: () => !jiraNumbers || allJiras.length === 0,
+      transform: (data) => data.statuses || {},
+      fetchOnMount: true
     }
+  );
 
-    // Status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(jira => {
-        const status = jira.actualStatus?.toLowerCase() || '';
-        switch (statusFilter) {
-          case 'active': return status === 'in progress';
-          case 'done': return status === 'done';
-          case 'cancelled': return status === 'cancel';
-          default: return true;
-        }
-      });
-    }
+  // Statistics using new hook
+  const stats = useJiraStats(filteredJiras);
 
-    // Date range filter
-    if (dateRange !== 'all') {
-      const today = new Date();
-      const startOfToday = new Date(today.setHours(0, 0, 0, 0));
-      
-      filtered = filtered.filter(jira => {
-        // Check if jira has logs in the date range
-        const hasLogsInRange = jira.dailyLogs.some(log => {
-          const logDate = new Date(log.logDate);
-          
-          switch (dateRange) {
-            case 'today':
-              return logDate.toDateString() === startOfToday.toDateString();
-            case 'thisWeek':
-              const weekStart = new Date(startOfToday);
-              weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-              return logDate >= weekStart;
-            case 'thisMonth':
-              return logDate.getMonth() === today.getMonth() && 
-                     logDate.getFullYear() === today.getFullYear();
-            default:
-              return true;
-          }
-        });
+  // No longer needed - handled by useApiData hook
 
-        // For tasks without logs, check creation date
-        if (!hasLogsInRange && jira.dailyLogs.length === 0) {
-          const createdDate = new Date(jira.createdAt);
-          
-          switch (dateRange) {
-            case 'today':
-              return createdDate.toDateString() === startOfToday.toDateString();
-            case 'thisWeek':
-              const weekStart = new Date(startOfToday);
-              weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-              return createdDate >= weekStart;
-            case 'thisMonth':
-              return createdDate.getMonth() === today.getMonth() && 
-                     createdDate.getFullYear() === today.getFullYear();
-            default:
-              return true;
-          }
-        }
+  // No longer needed - handled by useJiraFilter hook
 
-        return hasLogsInRange;
-      });
-    }
+  // No longer needed - using useJiraStats hook
 
-    return filtered;
-  }, [allJiras, searchQuery, statusFilter, dateRange]);
-
-  // Summary statistics
-  const summaryStats = useMemo(() => {
-    const today = new Date();
-    const thisMonth = today.getMonth();
-    const thisYear = today.getFullYear();
-    
-    let todayHours = 0;
-    let weekHours = 0;
-    let monthHours = 0;
-    let activeCount = 0;
-    let doneCount = 0;
-
-    filteredJiras.forEach(jira => {
-      const status = jira.actualStatus?.toLowerCase() || '';
-      if (status === 'in progress') activeCount++;
-      if (status === 'done') doneCount++;
-
-      jira.dailyLogs.forEach(log => {
-        const logDate = new Date(log.logDate);
-        const hours = parseFloat(log.timeSpent || 0);
-        
-        if (logDate.toDateString() === today.toDateString()) {
-          todayHours += hours;
-        }
-        
-        const weekStart = new Date(today);
-        weekStart.setDate(today.getDate() - today.getDay());
-        if (logDate >= weekStart) {
-          weekHours += hours;
-        }
-        
-        if (logDate.getMonth() === thisMonth && logDate.getFullYear() === thisYear) {
-          monthHours += hours;
-        }
-      });
-    });
-
-    return {
-      totalTasks: filteredJiras.length,
-      activeCount,
-      doneCount,
-      todayHours,
-      weekHours,
-      monthHours
-    };
-  }, [filteredJiras]);
-
-  if (!session) {
-    return null;
+  if (!isReady) {
+    return <LoadingSpinner fullScreen size="xl" text="Loading..." />;
   }
 
   const handleExport = async () => {
@@ -232,7 +104,7 @@ export default function DailyLogsPage() {
 
     await new Promise(resolve => setTimeout(resolve, 300)); 
     window.location.href = `/api/export/excel?startDate=${startDate}&endDate=${endDate}`;
-    setShowExportMenu(false);
+    closeModal('exportMenu');
   };
 
   const handleSaveJira = async (jiraId, jiraData) => {
@@ -265,8 +137,7 @@ export default function DailyLogsPage() {
         }
         toast.success('Task added successfully!');
       }
-      setShowJiraFormModal(false);
-      setEditingJira(null); // Clear editing Jira
+      jiraFormModal.close();
       fetchJiras(); // Re-fetch all Jiras to ensure UI consistency
     } catch (error) {
       toast.error(`Error saving task: ${error.message || 'Unknown error'}`);
@@ -300,8 +171,7 @@ export default function DailyLogsPage() {
   };
 
   const handleEditJira = (jira) => {
-    setEditingJira(jira);
-    setShowJiraFormModal(true);
+    jiraFormModal.open(jira);
   };
 
 
@@ -343,38 +213,36 @@ export default function DailyLogsPage() {
 
   if (isInitialLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-white text-black">
-        <FontAwesomeIcon icon={faSpinner} spin size="2x" className="text-black mr-2" /> 
-        Loading Daily Logs...
-      </div>
+      <LoadingSpinner 
+        fullScreen 
+        size="xl" 
+        text="Loading Daily Logs..." 
+      />
     );
   }
 
   if (fetchError) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-white text-red-600">
-        <p>Error loading data: {fetchError.message}. Please try again.</p>
+      <div className="flex justify-center items-center min-h-screen bg-white">
+        <ErrorMessage 
+          type="error" 
+          message={`Error loading data: ${fetchError.message}. Please try again.`} 
+        />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Clean Header */}
+      {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="mx-auto px-6 py-6">
-          <div className="flex items-center justify-center mb-6">
-            <div>
-              <h1 className="text-2xl font-light text-black">DAILY LOGS</h1>
-              <div className="w-14 h-px bg-black mx-auto mt-4"></div> {/* Divider */}
-            </div>
-          </div>
-
+          <PageHeader title="DAILY LOGS" />
+          
           {/* Stats */}
           <div className="mx-auto">
-            <DailyLogsSummary stats={summaryStats} />
+            <DailyLogsSummary stats={stats} />
           </div>
-          
         </div>
       </div>
 
@@ -383,115 +251,127 @@ export default function DailyLogsPage() {
             <div className="flex gap-3">
               {/* Search Box */}
               <div className="flex-1 relative">
-                <input
-                  type="text"
+                <Input
+                  variant="outline"
+                  size="sm"
                   placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-black transition-colors"
+                  className="pl-8"
                 />
                 <FontAwesomeIcon icon={faSearch} className="absolute left-2.5 top-2.5 text-gray-400 text-xs" />
               </div>
 
               {/* Filters */}
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="text-sm py-2 px-3 border border-gray-300 rounded focus:outline-none focus:border-black bg-white text-black"
-              >
-                <option value="all">All</option>
-                <option value="active">Active</option>
-                <option value="done">Done</option>
-              </select>
+              <Select
+                variant="outline"
+                size="sm"
+                value={activeFilters.status || 'all'}
+                onChange={(e) => setFilter('status', e.target.value)}
+                options={[
+                  { value: 'all', label: 'All' },
+                  { value: 'active', label: 'Active' },
+                  { value: 'done', label: 'Done' }
+                ]}
+              />
 
-              <select
-                value={dateRange}
-                onChange={(e) => setDateRange(e.target.value)}
-                className="text-sm py-2 px-3 border border-gray-300 rounded focus:outline-none focus:border-black bg-white text-black"
-              >
-                <option value="all">All Time</option>
-                <option value="today">Today</option>
-                <option value="thisWeek">Week</option>
-                <option value="thisMonth">Month</option>
-              </select>
+              <Select
+                variant="outline"
+                size="sm"
+                value={activeFilters.dateRange || 'thisMonth'}
+                onChange={(e) => setFilter('dateRange', e.target.value)}
+                options={[
+                  { value: 'all', label: 'All Time' },
+                  { value: 'today', label: 'Today' },
+                  { value: 'thisWeek', label: 'Week' },
+                  { value: 'thisMonth', label: 'Month' }
+                ]}
+              />
 
-              <select
+              <Select
+                variant="outline"
+                size="sm"
                 value={viewBy}
                 onChange={(e) => setViewBy(e.target.value)}
-                className="text-sm py-2 px-3 border border-gray-300 rounded focus:outline-none focus:border-black bg-white text-black"
-              >
-                <option value="list">List</option>
-                <option value="project">Project</option>
-                <option value="service">Service</option>
-              </select>
+                options={[
+                  { value: 'list', label: 'List' },
+                  { value: 'project', label: 'Project' },
+                  { value: 'service', label: 'Service' }
+                ]}
+              />
             </div>
 
             {/* Actions */}
             <div className="flex items-center justify-end gap-3">
-              <button 
-                className="px-4 py-2 bg-black text-white text-sm hover:bg-gray-800 transition-colors flex items-center gap-2"
-                onClick={() => {
-                  setEditingJira(null);
-                  setShowJiraFormModal(true);
-                }}
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => jiraFormModal.open()}
               >
-                <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                <FontAwesomeIcon icon={faPlus} className="text-xs mr-2" />
                 New Task
-              </button>
+              </Button>
 
               {selectedTasks.length > 0 && (
-                <button 
-                  className="px-3 py-2 bg-red-600 text-white text-sm hover:bg-red-700 transition-colors"
+                <Button
+                  variant="danger"
+                  size="sm"
                   onClick={handleBulkDelete}
                 >
                   Delete ({selectedTasks.length})
-                </button>
+                </Button>
               )}
 
-              <button
-                onClick={() => setShowCalendarModal(true)}
-                className="px-3 py-2 text-sm border border-gray-300 bg-white text-black hover:bg-gray-50 transition-colors"
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => calendarModal.open()}
               >
-                Calendar
-              </button>
+                Summary
+              </Button>
 
               <div className="relative">
-                <button
-                  onClick={() => setShowExportMenu(!showExportMenu)}
-                  className="px-3 py-2 text-sm border border-gray-300 bg-white text-black hover:bg-gray-50 transition-colors"
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openModal('exportMenu')}
                 >
                   Export
-                </button>
+                </Button>
 
-                {showExportMenu && (
+                {modals.exportMenu?.isOpen && (
                   <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded shadow-lg p-4 z-50">
                     <div className="space-y-3">
-                      <select
+                      <Select
+                        variant="outline"
+                        size="sm"
                         value={exportMonth}
                         onChange={(e) => setExportMonth(parseInt(e.target.value))}
-                        className="w-full text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-black"
-                      >
-                        {Array.from({ length: 12 }, (_, i) => (
-                          <option key={i + 1} value={i + 1}>
-                            {new Date(0, i).toLocaleString('default', { month: 'long' })}
-                          </option>
-                        ))}
-                      </select>
-                      <select
+                        options={Array.from({ length: 12 }, (_, i) => ({
+                          value: i + 1,
+                          label: new Date(0, i).toLocaleString('default', { month: 'long' })
+                        }))}
+                      />
+                      
+                      <Select
+                        variant="outline"
+                        size="sm"
                         value={exportYear}
                         onChange={(e) => setExportYear(parseInt(e.target.value))}
-                        className="w-full text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-black"
-                      >
-                        {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                          <option key={year} value={year}>{year}</option>
-                        ))}
-                      </select>
-                      <button
+                        options={Array.from({ length: 5 }, (_, i) => {
+                          const year = new Date().getFullYear() - i;
+                          return { value: year, label: year.toString() };
+                        })}
+                      />
+                      
+                      <Button
+                        variant="primary"
+                        size="sm"
                         onClick={handleExport}
-                        className="w-full px-4 py-2 bg-black text-white text-sm hover:bg-gray-800 transition-colors"
+                        className="w-full"
                       >
                         Download
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -532,20 +412,17 @@ export default function DailyLogsPage() {
 
        {/* Combined Jira Form Modal */}
       <JiraFormModal
-        isOpen={showJiraFormModal}
-        onClose={() => {
-          setShowJiraFormModal(false);
-          setEditingJira(null); // Clear editing Jira when closing modal
-        }}
-        jira={editingJira} // Pass the Jira object for editing
+        isOpen={jiraFormModal.isOpen}
+        onClose={jiraFormModal.close}
+        jira={jiraFormModal.data} // Pass the Jira object for editing
         onSaveJira={handleSaveJira} // Universal save handler for add/edit
         userEmail={userEmail} // Pass user email for fetching Jira issues
       />
 
       {/* Calendar Modal */}
       <CalendarModal
-        isOpen={showCalendarModal}
-        onClose={() => setShowCalendarModal(false)}
+        isOpen={calendarModal.isOpen}
+        onClose={calendarModal.close}
         allJiras={filteredJiras}
       />
 

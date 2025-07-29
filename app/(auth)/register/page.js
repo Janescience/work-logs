@@ -3,53 +3,59 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Button, Input, Select } from '@/components/ui';
+import { post, handleFormSubmission } from '@/utils/apiHelpers';
+import { createValidator } from '@/utils/validation';
+
+const validator = createValidator({
+  username: [{ type: 'required' }],
+  email: [{ type: 'required' }, { type: 'email' }],
+  password: [{ type: 'required' }, { type: 'password', minLength: 6 }],
+  name: [{ type: 'required' }]
+});
 
 export default function RegisterPage() {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [email, setEmail] = useState('');
-    const [name, setName] = useState(''); 
-    const [phone, setPhone] = useState('');
+    const [formData, setFormData] = useState({
+        username: '',
+        password: '',
+        email: '',
+        name: '',
+        phone: '',
+        type: 'Non-Core'
+    });
+    const [errors, setErrors] = useState({});
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
-    const [userType, setUserType] = useState('Non-Core');
     const router = useRouter();
+    
+    const handleInputChange = (field) => (e) => {
+        setFormData(prev => ({ ...prev, [field]: e.target.value }));
+        if (errors[field]) {
+            setErrors(prev => ({ ...prev, [field]: '' }));
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError('');
-        setSuccess('');
-        setLoading(true);
-
-        try {
-            const res = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ username, password, email, name, phone, type: userType }),
-            });
-
-            const data = await res.json();
-
-            if (res.ok) {
-                setSuccess(data.message);
-                setUsername('');
-                setPassword('');
-                setEmail('');
-                // Redirect after showing success message
+        
+        const validationErrors = validator(formData);
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+            return;
+        }
+        
+        await handleFormSubmission(
+            () => post('/api/auth/register', formData),
+            setLoading,
+            setError,
+            setSuccess,
+            () => {
                 setTimeout(() => {
                     router.push('/login?registered=true');
                 }, 1500);
-            } else {
-                setError(data.message || 'Registration failed.');
             }
-        } catch (err) {
-            console.error('Client-side registration error:', err);
-            setError('An unexpected error occurred. Please try again.');
-        }
-        setLoading(false);
+        );
     };
 
     return (
@@ -63,79 +69,58 @@ export default function RegisterPage() {
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Username Input */}
-                    <div>
-                        <input
-                            type="text"
-                            id="username"
-                            placeholder="Username"
-                            className="w-full px-0 py-3 text-black bg-transparent border-0 border-b border-gray-300 focus:border-black focus:outline-none transition-colors placeholder-gray-400"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            required
-                        />
-                    </div>
+                    <Input
+                        type="text"
+                        placeholder="Username"
+                        value={formData.username}
+                        onChange={handleInputChange('username')}
+                        error={errors.username}
+                        required
+                    />
 
-                    {/* Email Input */}
-                    <div>
-                        <input
-                            type="email"
-                            id="email"
-                            placeholder="Email"
-                            className="w-full px-0 py-3 text-black bg-transparent border-0 border-b border-gray-300 focus:border-black focus:outline-none transition-colors placeholder-gray-400"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                        />
-                    </div>
+                    <Input
+                        type="email"
+                        placeholder="Email"
+                        value={formData.email}
+                        onChange={handleInputChange('email')}
+                        error={errors.email}
+                        required
+                    />
 
-                    {/* Password Input */}
-                    <div>
-                        <input
-                            type="password"
-                            id="password"
-                            placeholder="Password (Can use anything no rule)"
-                            className="w-full px-0 py-3 text-black bg-transparent border-0 border-b border-gray-300 focus:border-black focus:outline-none transition-colors placeholder-gray-400"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
-                    </div>
+                    <Input
+                        type="password"
+                        placeholder="Password (Can use anything no rule)"
+                        value={formData.password}
+                        onChange={handleInputChange('password')}
+                        error={errors.password}
+                        required
+                    />
 
-                    <div>
-                        <input
-                            type="text"
-                            id="name"
-                            placeholder="Full Name"
-                            className="w-full px-0 py-3 text-black bg-transparent border-0 border-b border-gray-300 focus:border-black focus:outline-none"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                        />
-                    </div>
+                    <Input
+                        type="text"
+                        placeholder="Full Name"
+                        value={formData.name}
+                        onChange={handleInputChange('name')}
+                        error={errors.name}
+                        required
+                    />
 
-                    <div>
-                        <input
-                            type="text"
-                            id="phone"
-                            placeholder="Phone Number (Optional)"
-                            className="w-full px-0 py-3 text-black bg-transparent border-0 border-b border-gray-300 focus:border-black focus:outline-none"
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                        />
-                    </div>
+                    <Input
+                        type="text"
+                        placeholder="Phone Number (Optional)"
+                        value={formData.phone}
+                        onChange={handleInputChange('phone')}
+                        error={errors.phone}
+                    />
 
-                    <div>
-                        <select
-                            id="userType"
-                            className="w-full px-0 py-3 text-black bg-transparent border-0 border-b border-gray-300 focus:border-black focus:outline-none"
-                            value={userType}
-                            onChange={(e) => setUserType(e.target.value)}
-                        >
-                            <option value="Non-Core">Non-Core</option>
-                            <option value="Core">Core</option>
-                        </select>
-                    </div>
+                    <Select
+                        value={formData.type}
+                        onChange={handleInputChange('type')}
+                        options={[
+                            { value: 'Non-Core', label: 'Non-Core' },
+                            { value: 'Core', label: 'Core' }
+                        ]}
+                    />
 
                     {/* Messages */}
                     {error && (
@@ -151,13 +136,15 @@ export default function RegisterPage() {
 
                     {/* Submit Button */}
                     <div className="pt-4">
-                        <button
+                        <Button
                             type="submit"
-                            disabled={loading}
-                            className="w-full py-3 bg-black text-white font-light tracking-wide hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            loading={loading}
+                            loadingText="Creating Account..."
+                            className="w-full py-3"
+                            size="lg"
                         >
-                            {loading ? 'Creating Account...' : 'Create Account'}
-                        </button>
+                            Create Account
+                        </Button>
                     </div>
                 </form>
 

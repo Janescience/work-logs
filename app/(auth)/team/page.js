@@ -12,15 +12,13 @@ import {
   faCheckCircle, faClock, faUserPlus,
   faFilter, faTimeline, faChartLine
 } from '@fortawesome/free-solid-svg-icons';
-import MyJiras from '@/components/MyJiras';
-import WorkLogCalendar from '@/components/WorkCalendar';
 import { toast } from 'react-toastify';
-import TeamSummary from '@/components/TeamSummary';
-import TeamRetrospective from '@/components/TeamRetrospective';
-import TeamTimeline from '@/components/TeamTimeline';
-import BurndownChart from '@/components/BurndownChart';
-import VelocityTracker from '@/components/VelocityTracker';
-import PerformanceAlerts from '@/components/PerformanceAlerts';
+// Organized imports by category
+import { MyJiras } from '@/components/jira';
+import { WorkCalendar } from '@/components/calendar';
+import { TeamSummary, PerformanceAlerts } from '@/components/dashboard';
+import { TeamRetrospective, TeamTimeline } from '@/components/calendar';
+import { BurndownChart, VelocityTracker } from '@/components/reports';
 
 const getAvatarUrl = (username) => {
   if (!username) return 'https://placehold.co/40x40/e5e7eb/6b7280?text=NA';
@@ -554,7 +552,7 @@ export default function MyTeamPage() {
                       {!isCollapsed && (
                         <div className="bg-gray-50 border-t border-gray-200">
                           <div className="p-6 space-y-6">
-                            <WorkLogCalendar allJiras={jiras} />
+                            <WorkCalendar allJiras={jiras} />
                             <MyJiras userEmail={memberInfo.email} userName={memberInfo.username} readOnly={true} />
                           </div>
                         </div>

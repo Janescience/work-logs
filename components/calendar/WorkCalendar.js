@@ -224,10 +224,10 @@ export default function WorkCalendar({ allJiras }) {
 
     return (
         <div className="bg-white p-4 md:p-6 text-xs border border-gray-300 text-black">
-            <div className="flex justify-between items-center mb-2">
-                <h2 className="text-lg font-light text-black">Monthly Summary</h2>
+            <div className="flex justify-center items-center mb-2">
+                {/* <h2 className="text-lg font-light text-black">Monthly Summary</h2> */}
                 <div className="flex items-center gap-4">
-                    <button 
+                    {/* <button 
                         onClick={copyTableData}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
                             copySuccess 
@@ -238,7 +238,7 @@ export default function WorkCalendar({ allJiras }) {
                     >
                         <FontAwesomeIcon icon={copySuccess ? faCheck : faCopy} />
                         {copySuccess ? 'Copied!' : 'Copy Table'}
-                    </button>
+                    </button> */}
                     <button onClick={goToPreviousMonth} className="p-1 hover:bg-gray-100 rounded-full text-black">
                         <FontAwesomeIcon icon={faChevronLeft} />
                     </button>

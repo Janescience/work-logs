@@ -2,10 +2,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useAdminRequired } from '@/hooks/useAuthRequired';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSpinner } from '@fortawesome/free-solid-svg-icons';
+import { useAdminRequired } from '@/hooks/auth';
 import { toast } from 'react-toastify';
+import { LoadingSpinner, PageHeader, Select, ErrorMessage } from '@/components/ui';
+import { get, put, handleFormSubmission } from '@/utils/apiHelpers';
+import { formatDate } from '@/utils/formatters';
 
 const getAvatarUrl = (username) => `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(username)}`;
 
@@ -19,26 +20,15 @@ export default function ManageRolesPage() {
     const availableRoles = ['DEVELOPER', 'TEAM LEAD','IT LEAD','ADMIN'];
     const availableTypes = ['Non-Core', 'Core'];
 
-    const formatDate = (dateString) => {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
-    };
 
     const fetchUsers = useCallback(async () => {
-        setLoadingUsers(true);
-        setErrorUsers(null);
-        try {
-            const res = await fetch('/api/admin/users');
-            if (!res.ok) throw new Error((await res.json()).message || 'Failed to fetch users');
-            const data = await res.json();
-            setUsers(data.users);
-        } catch (error) {
-            setErrorUsers(error.message);
-            toast.error(`Error fetching users: ${error.message}`);
-        } finally {
-            setLoadingUsers(false);
-        }
+        await handleFormSubmission(
+            () => get('/api/admin/users'),
+            setLoadingUsers,
+            setErrorUsers,
+            () => {},
+            (data) => setUsers(data.users)
+        );
     }, []);
 
     useEffect(() => {
@@ -49,25 +39,22 @@ export default function ManageRolesPage() {
 
     const handleUpdateUser = async (userId, updatePayload) => {
         setUpdatingUserId(userId);
-        try {
-            const res = await fetch('/api/admin/update-role', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, ...updatePayload }),
-            });
-            if (!res.ok) throw new Error((await res.json()).message || 'Failed to update user');
-            
-            const data = await res.json();
-            // To show the updated team name instantly, we need to refetch all users.
-            // A more advanced solution would be to update the state optimistically.
-            toast.success(`User ${data.user.username} updated.`);
-            fetchUsers(); 
-        } catch (error) {
-            toast.error(`Error updating user: ${error.message}`);
-            fetchUsers();
-        } finally {
-            setUpdatingUserId(null);
-        }
+        
+        await handleFormSubmission(
+            () => put('/api/admin/update-role', { userId, ...updatePayload }),
+            () => {}, // loading is handled by updatingUserId
+            (error) => {
+                toast.error(`Error updating user: ${error}`);
+                fetchUsers();
+            },
+            () => {},
+            (data) => {
+                toast.success(`User ${data.user.username} updated.`);
+                fetchUsers();
+            }
+        );
+        
+        setUpdatingUserId(null);
     };
 
     const handleRoleCheckboxChange = (userId, role, isChecked) => {
@@ -96,12 +83,11 @@ export default function ManageRolesPage() {
 
     if (status === 'loading') {
         return (
-            <div className="fixed inset-0 bg-white flex items-center justify-center z-50">
-                <div className="flex flex-col items-center text-black">
-                    <FontAwesomeIcon icon={faSpinner} spin className="text-4xl mb-4" />
-                    <span className="text-lg font-light">Loading Admin Panel...</span>
-                </div>
-            </div>
+            <LoadingSpinner 
+                fullScreen 
+                size="xl" 
+                text="Loading Admin Panel..." 
+            />
         );
     }
 
@@ -112,20 +98,12 @@ export default function ManageRolesPage() {
     return (
         <div className="min-h-screen bg-white p-6">
             <div className="mx-auto">
-                <div className="text-center mb-6">
-                    <h1 className="text-4xl font-light text-black mb-4">Manage Users</h1>
-                    <div className="w-16 h-px bg-black mx-auto"></div>
-                </div>
-
-                {errorUsers && <div className="text-red-500 p-3 mb-4">{errorUsers}</div>}
+                <PageHeader title="Manage Users" />
+                
+                <ErrorMessage type="error" message={errorUsers} />
 
                 {loadingUsers ? (
-                    <div className="flex justify-center items-center py-12">
-                        <div className="flex flex-col items-center text-black">
-                            <FontAwesomeIcon icon={faSpinner} spin className="text-2xl mb-2" />
-                            <span className="text-sm font-light">Loading users...</span>
-                        </div>
-                    </div>
+                    <LoadingSpinner centered text="Loading users..." />
                 ) : users.length === 0 ? (
                     <div className="text-center py-12 border border-gray-300 bg-white">
                         <div className="text-gray-500">
@@ -161,14 +139,15 @@ export default function ManageRolesPage() {
                                         
                                         <div>
                                             <span className="font-medium text-gray-700">Type:</span>
-                                            <select
+                                            <Select
+                                                variant="outline"
+                                                size="sm"
                                                 value={user.type}
                                                 onChange={(e) => handleTypeChange(user.id, e.target.value)}
                                                 disabled={updatingUserId === user.id}
-                                                className="ml-2 rounded-md border-gray-300 shadow-sm text-black p-1 text-xs"
-                                            >
-                                                {availableTypes.map(type => <option key={type} value={type}>{type}</option>)}
-                                            </select>
+                                                options={availableTypes.map(type => ({ value: type, label: type }))}
+                                                className="ml-2 text-xs"
+                                            />
                                         </div>
                                         
                                         <div>
@@ -229,14 +208,15 @@ export default function ManageRolesPage() {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{user.teamName}</td>
                                     <td className="px-6 py-4 text-sm">
-                                        <select
+                                        <Select
+                                            variant="outline"
+                                            size="sm"
                                             value={user.type}
                                             onChange={(e) => handleTypeChange(user.id, e.target.value)}
                                             disabled={updatingUserId === user.id}
-                                            className="w-full rounded-md border-gray-300 shadow-sm text-black p-1 text-xs"
-                                        >
-                                            {availableTypes.map(type => <option key={type} value={type}>{type}</option>)}
-                                        </select>
+                                            options={availableTypes.map(type => ({ value: type, label: type }))}
+                                            className="text-xs"
+                                        />
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                         <div className="flex flex-wrap gap-x-4 gap-y-1">

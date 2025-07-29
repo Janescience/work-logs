@@ -1,14 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
-import NeedAction from '@/components/NeedAction';
-import MyJiras from '@/components/MyJiras';
-import DashboardStats from '@/components/DashboardStats';
-import RecentActivity from '@/components/RecentActivity';
-import TaskDistribution from '@/components/TaskDistribution';
-import WeeklyProgress from '@/components/WeeklyProgress';
-import ProductivityInsights from '@/components/ProductivityInsights';
+import { NeedAction, DashboardStats, RecentActivity, ProductivityInsights } from '@/components/dashboard';
+import { MyJiras, TaskDistribution } from '@/components/jira';
+import { WeeklyProgress } from '@/components/calendar';
 
-import useJiras from '@/hooks/useJiras';
+import { useJiras } from '@/hooks/api';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 

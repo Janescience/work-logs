@@ -4,14 +4,31 @@ import { useState, useEffect } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Button, Input } from '@/components/ui';
+import { createValidator } from '@/utils/validation';
+
+const validator = createValidator({
+  username: [{ type: 'required' }],
+  password: [{ type: 'required' }]
+});
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState({
+    username: '',
+    password: ''
+  });
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { data: session, status } = useSession();
+  
+  const handleInputChange = (field) => (e) => {
+    setFormData(prev => ({ ...prev, [field]: e.target.value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -21,13 +38,20 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    const validationErrors = validator(formData);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+    
     setError('');
     setLoading(true);
 
     const result = await signIn('credentials', {
       redirect: false,
-      username,
-      password,
+      username: formData.username,
+      password: formData.password,
     });
 
     if (result.error) {
@@ -49,31 +73,23 @@ export default function LoginPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Username Input */}
-          <div>
-            <input
-              type="text"
-              id="username"
-              placeholder="Username"
-              className="w-full px-0 py-3 text-black bg-transparent border-0 border-b border-gray-300 focus:border-black focus:outline-none transition-colors placeholder-gray-400"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-            />
-          </div>
+          <Input
+            type="text"
+            placeholder="Username"
+            value={formData.username}
+            onChange={handleInputChange('username')}
+            error={errors.username}
+            required
+          />
 
-          {/* Password Input */}
-          <div>
-            <input
-              type="password"
-              id="password"
-              placeholder="Password"
-              className="w-full px-0 py-3 text-black bg-transparent border-0 border-b border-gray-300 focus:border-black focus:outline-none transition-colors placeholder-gray-400"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
+          <Input
+            type="password"
+            placeholder="Password"
+            value={formData.password}
+            onChange={handleInputChange('password')}
+            error={errors.password}
+            required
+          />
 
           {/* Error Message */}
           {error && (
@@ -84,13 +100,15 @@ export default function LoginPage() {
 
           {/* Submit Button */}
           <div className="pt-4">
-            <button
+            <Button
               type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-black text-white font-light tracking-wide hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              loading={loading}
+              loadingText="Signing in..."
+              className="w-full py-3"
+              size="lg"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </button>
+              Sign In
+            </Button>
           </div>
         </form>
 
