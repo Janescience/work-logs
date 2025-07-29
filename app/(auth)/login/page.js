@@ -32,7 +32,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      router.push('/');
+      window.location.href = '/';
     }
   }, [status, router]);
 
@@ -57,7 +57,7 @@ export default function LoginPage() {
     if (result.error) {
       setError(result.error);
     } else {
-      router.push('/');
+      window.location.href = '/';
     }
     setLoading(false);
   };
