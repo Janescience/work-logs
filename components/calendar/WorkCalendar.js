@@ -309,9 +309,9 @@ export default function WorkCalendar({ allJiras }) {
                         {timesheetData.map((jira, index) => (
                             <tr key={jira.jiraNumber} className="hover:bg-gray-50">
                                 <td className="border p-1 text-center">{index + 1}</td>
-                                <td className="border p-1 font-mono">{jira.jiraNumber}</td>
-                                <td className="border p-1">{jira.description}</td>
-                                <td className="border p-1 text-xs">
+                                <td className="border p-1 font-mono whitespace-nowrap">{jira.jiraNumber}</td>
+                                <td className="border p-1 whitespace-nowrap">{jira.description}</td>
+                                <td className="border p-1 text-xs  whitespace-nowrap">
                                     <span className={`px-2 py-1 rounded-full text-xs ${
                                         jira.jiraStatus?.toLowerCase().includes('done') ? 'bg-green-100 text-green-800' :
                                         jira.jiraStatus?.toLowerCase().includes('progress') ? 'bg-blue-100 text-blue-800' :
@@ -321,7 +321,7 @@ export default function WorkCalendar({ allJiras }) {
                                         {jira.jiraStatus}
                                     </span>
                                 </td>
-                                <td className="border p-1 text-xs">
+                                <td className="border p-1 text-xs  whitespace-nowrap">
                                     <span className={`px-2 py-1 rounded-full text-xs ${
                                         jira.actualStatus?.toLowerCase().includes('done') ? 'bg-green-100 text-green-800' :
                                         jira.actualStatus?.toLowerCase().includes('progress') ? 'bg-blue-100 text-blue-800' :

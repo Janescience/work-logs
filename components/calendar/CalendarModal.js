@@ -16,9 +16,50 @@ import { WorkCalendar } from '@/components/calendar';
 
 const CalendarModal = ({ isOpen, onClose, allJiras }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [copyButtonText, setCopyButtonText] = useState('Copy Table');
+  const [copyButtonText, setCopyButtonText] = useState('Copy Detail');
   const [copyIcon, setCopyIcon] = useState(faClipboard);
+  const [copy2ButtonText, setCopy2ButtonText] = useState('Copy Summary');
+  const [copy2Icon, setCopy2Icon] = useState(faClipboard);
+  const [jiraStatuses, setJiraStatuses] = useState(new Map());
+  const [loadingJiras, setLoadingJiras] = useState(false);
   const nodeRef = useRef(null);
+
+  // Fetch JIRA statuses
+  useEffect(() => {
+    if (!allJiras || allJiras.length === 0) return;
+    
+    const fetchJiraStatuses = async () => {
+      setLoadingJiras(true);
+      try {
+        // Extract unique JIRA numbers
+        const jiraNumbers = [...new Set(allJiras.map(jira => jira.jiraNumber))];
+        
+        if (jiraNumbers.length > 0) {
+          const jiraNumbersParam = jiraNumbers.join(',');
+          const res = await fetch(`/api/jira-status?jiraNumbers=${encodeURIComponent(jiraNumbersParam)}`);
+          
+          if (res.ok) {
+            const data = await res.json();
+            const statusMap = new Map();
+            
+            // API returns { statuses: { jiraNumber: status } }
+            if (data.statuses) {
+              Object.entries(data.statuses).forEach(([jiraNumber, status]) => {
+                statusMap.set(jiraNumber, status || 'N/A');
+              });
+            }
+            setJiraStatuses(statusMap);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch JIRA statuses:', error);
+      } finally {
+        setLoadingJiras(false);
+      }
+    };
+
+    fetchJiraStatuses();
+  }, [allJiras]);
 
   // Effect for Esc key and reset
   useEffect(() => {
@@ -31,8 +72,10 @@ const CalendarModal = ({ isOpen, onClose, allJiras }) => {
     
     // Reset when modal opens
     if (isOpen) {
-      setCopyButtonText('Copy Table');
+      setCopyButtonText('Copy Detail');
       setCopyIcon(faClipboard);
+      setCopy2ButtonText('Copy Summary');
+      setCopy2Icon(faClipboard);
       setIsFullscreen(true); // เปิดเต็มจอเป็น default
     }
 
@@ -49,6 +92,20 @@ const CalendarModal = ({ isOpen, onClose, allJiras }) => {
     const currentYear = new Date().getFullYear();
     const numDays = new Date(currentYear, currentMonth + 1, 0).getDate();
     
+    // Helper function to clean text for Excel
+    const cleanTextForExcel = (text) => {
+      if (!text) return '';
+      
+      // Convert to string if not already
+      text = String(text);
+      
+      // Remove or replace problematic characters
+      return text
+        .replace(/[\t\r\n]/g, ' ')  // Replace tabs, carriage returns, and newlines with space
+        .replace(/\s+/g, ' ')        // Replace multiple spaces with single space
+        .trim();                     // Remove leading/trailing whitespace
+    };
+    
     // Create a map to organize data by JIRA
     const jiraMap = new Map();
     
@@ -61,8 +118,8 @@ const CalendarModal = ({ isOpen, onClose, allJiras }) => {
           
           if (!jiraMap.has(jira.jiraNumber)) {
             jiraMap.set(jira.jiraNumber, {
-              jiraNumber: jira.jiraNumber,
-              description: jira.description,
+              jiraNumber: cleanTextForExcel(jira.jiraNumber || ''),
+              description: cleanTextForExcel(jira.description || ''),
               totalHours: 0,
               logsByDay: {}
             });
@@ -87,6 +144,7 @@ const CalendarModal = ({ isOpen, onClose, allJiras }) => {
     // Data rows
     const timesheetData = Array.from(jiraMap.values());
     timesheetData.forEach((jira, index) => {
+      // All text fields are already cleaned when creating the map
       copyText += `${index + 1}\t${jira.jiraNumber}\t${jira.description}\t${jira.totalHours.toFixed(1)}`;
       
       for (let day = 1; day <= numDays; day++) {
@@ -100,15 +158,87 @@ const CalendarModal = ({ isOpen, onClose, allJiras }) => {
       setCopyButtonText('Copied!');
       setCopyIcon(faCheck);
       setTimeout(() => {
-        setCopyButtonText('Copy Table');
+        setCopyButtonText('Copy Detail');
         setCopyIcon(faClipboard);
       }, 2000);
     }).catch(err => {
       console.error('Failed to copy text: ', err);
       setCopyButtonText('Failed');
       setTimeout(() => {
-        setCopyButtonText('Copy Table');
+        setCopyButtonText('Copy Detail');
         setCopyIcon(faClipboard);
+      }, 2000);
+    });
+  };
+
+  // Copy custom format data to clipboard
+  const handleCopy2 = () => {
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    // Create a map to organize data by JIRA - using the same logic as WorkCalendar
+    const jiraMap = new Map();
+    
+    allJiras.forEach(jira => {
+      jira.dailyLogs.forEach(log => {
+        const logDate = new Date(log.logDate);
+        if (logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear) {
+          if (!jiraMap.has(jira.jiraNumber)) {
+            jiraMap.set(jira.jiraNumber, {
+              jiraNumber: jira.jiraNumber || '',
+              description: jira.description || '',
+              projectName: jira.projectName || '',
+              jiraStatus: jiraStatuses.get(jira.jiraNumber) || '',
+              actualStatus: jira.actualStatus || ''
+            });
+          }
+        }
+      });
+    });
+    
+    // Helper function to clean text for Excel
+    const cleanTextForExcel = (text) => {
+      if (!text) return '';
+      
+      // Convert to string if not already
+      text = String(text);
+      
+      // Remove or replace problematic characters
+      return text
+        .replace(/[\t\r\n]/g, ' ')  // Replace tabs, carriage returns, and newlines with space
+        .replace(/\s+/g, ' ')        // Replace multiple spaces with single space
+        .trim();                     // Remove leading/trailing whitespace
+    };
+    
+    let copyText = '';
+    
+    // Data rows without headers - Format: Jira Number, Jira Description, Project Name, blank column, Jira Status, Actual Status
+    const timesheetData = Array.from(jiraMap.values());
+    timesheetData.forEach((jira) => {
+      // Clean all text fields to ensure proper tab structure
+      const jiraNumber = cleanTextForExcel(jira.jiraNumber);
+      const description = cleanTextForExcel(jira.description);
+      const projectName = cleanTextForExcel(jira.projectName);
+      const emptyColumn = '';
+      const jiraStatus = cleanTextForExcel(jira.jiraStatus);
+      const actualStatus = cleanTextForExcel(jira.actualStatus);
+      
+      copyText += `${jiraNumber}\t${description}\t${projectName}\t${emptyColumn}\t${jiraStatus}\t${actualStatus}\n`;
+    });
+    
+    navigator.clipboard.writeText(copyText).then(() => {
+      setCopy2ButtonText('Copied!');
+      setCopy2Icon(faCheck);
+      setTimeout(() => {
+        setCopy2ButtonText('Copy Summary');
+        setCopy2Icon(faClipboard);
+      }, 2000);
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+      setCopy2ButtonText('Failed');
+      setTimeout(() => {
+        setCopy2ButtonText('Copy Summary');
+        setCopy2Icon(faClipboard);
       }, 2000);
     });
   };
@@ -155,6 +285,14 @@ const CalendarModal = ({ isOpen, onClose, allJiras }) => {
               >
                 <FontAwesomeIcon icon={copyIcon} className="text-xs" />
                 {copyButtonText}
+              </button>
+              <button 
+                onClick={handleCopy2}
+                className="no-drag px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 flex items-center gap-2 bg-white/10 hover:bg-white/20"
+                title="Copy custom format (Jira Number, Description, Project, Status)"
+              >
+                <FontAwesomeIcon icon={copy2Icon} className="text-xs" />
+                {copy2ButtonText}
               </button>
               <button 
                 onClick={toggleFullscreen}
