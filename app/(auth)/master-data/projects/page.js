@@ -115,20 +115,26 @@ export default function MasterDataProjectsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-white p-6">
-            <div className="mx-auto">
-                <PageHeader 
-                    title="Projects" 
-                    actions={[
-                        {
-                            label: 'New Project',
-                            icon: <FontAwesomeIcon icon={faPlus} className="text-sm" />,
-                            onClick: () => openModal(),
-                            variant: 'primary'
-                        }
-                    ]}
-                />
-                
+        <div className="min-h-screen bg-gray-50">
+            {/* Header */}
+            <div className="bg-white border-b border-gray-200">
+                <div className="mx-auto px-6 py-8">
+                    <PageHeader title="PROJECTS" />
+                    
+                    {/* Action button - Centered */}
+                    <div className="flex justify-center mt-6">
+                        <Button
+                            variant="primary"
+                            onClick={() => openModal()}
+                        >
+                            <FontAwesomeIcon icon={faPlus} className="mr-2" />
+                            New Project
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="mx-auto p-6">
                 <ErrorMessage type="error" message={error} />
 
                 <Table
@@ -193,7 +199,6 @@ export default function MasterDataProjectsPage() {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <Input
                             label="Project Name"
-                            variant="outline"
                             value={formData.name}
                             onChange={handleInputChange('name')}
                             required
@@ -202,7 +207,6 @@ export default function MasterDataProjectsPage() {
 
                         <Select
                             label="Project Type"
-                            variant="outline"
                             value={formData.type}
                             onChange={handleInputChange('type')}
                             options={projectTypes}

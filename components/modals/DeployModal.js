@@ -5,6 +5,7 @@ import React, { useState, useMemo } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
+import { Input, Select, Button } from '@/components/ui';
 
 const DeployModal = ({ isOpen, onClose, jira, onDeploySubmit }) => {
     const [deployDate, setDeployDate] = useState(new Date().toISOString().slice(0, 10));
@@ -61,46 +62,71 @@ const DeployModal = ({ isOpen, onClose, jira, onDeploySubmit }) => {
                     <h2 className="text-2xl font-light text-black">
                         Deploy: <span className="font-semibold">{jira.jiraNumber}</span>
                     </h2>
-                    <button onClick={onClose} className="text-gray-600 hover:text-black">
+                    <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-600 hover:text-black">
                         <FontAwesomeIcon icon={faTimes} size="lg" />
-                    </button>
+                    </Button>
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Deployment Date</label>
-                            <input type="date" value={deployDate} onChange={e => setDeployDate(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required />
+                            <Input
+                                label="Deployment Date"
+                                type="date"
+                                value={deployDate}
+                                onChange={e => setDeployDate(e.target.value)}
+                                required
+                            />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Environment</label>
-                            <select value={environment} onChange={e => setEnvironment(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-black" required>
-                                <option value="PREPROD">PREPROD</option>
-                                <option value="PROD">PROD</option>
-                            </select>
+                            <Select
+                                label="Environment"
+                                value={environment}
+                                onChange={e => setEnvironment(e.target.value)}
+                                options={[
+                                    { value: 'PREPROD', label: 'PREPROD' },
+                                    { value: 'PROD', label: 'PROD' }
+                                ]}
+                                required
+                            />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Platform</label>
-                            <select value={platform} onChange={e => setPlatform(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-black" required>
-                                <option value="Docker">Docker</option>
-                                <option value="AWS ECS">AWS ECS</option>
-                                <option value="Windows Server">Windows Server</option>
-                            </select>
+                            <Select
+                                label="Platform"
+                                value={platform}
+                                onChange={e => setPlatform(e.target.value)}
+                                options={[
+                                    { value: 'Docker', label: 'Docker' },
+                                    { value: 'AWS ECS', label: 'AWS ECS' },
+                                    { value: 'Windows Server', label: 'Windows Server' }
+                                ]}
+                                required
+                            />
                         </div>
                         {platform === 'Docker' && (
                              <div>
-                                <label className="block text-sm font-medium text-gray-700">Image Version</label>
-                                <input type="text" value={imageVersion} onChange={e => setImageVersion(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-black" placeholder="e.g., 2.7.8" required />
+                                <Input
+                                    label="Image Version"
+                                    value={imageVersion}
+                                    onChange={e => setImageVersion(e.target.value)}
+                                    placeholder="e.g., 2.7.8"
+                                    required
+                                />
                             </div>
                         )}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Development Language</label>
-                            <select value={language} onChange={e => setLanguage(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-black" required>
-                                <option value="JAVA">JAVA</option>
-                                <option value=".NET">.NET</option>
-                                <option value="PHP">PHP</option>
-                                <option value="Visual Basic">Visual Basic</option>
-                                <option value="Other">Other</option>
-                            </select>
+                            <Select
+                                label="Development Language"
+                                value={language}
+                                onChange={e => setLanguage(e.target.value)}
+                                options={[
+                                    { value: 'JAVA', label: 'JAVA' },
+                                    { value: '.NET', label: '.NET' },
+                                    { value: 'PHP', label: 'PHP' },
+                                    { value: 'Visual Basic', label: 'Visual Basic' },
+                                    { value: 'Other', label: 'Other' }
+                                ]}
+                                required
+                            />
                         </div>
                     </div>
 
@@ -109,34 +135,49 @@ const DeployModal = ({ isOpen, onClose, jira, onDeploySubmit }) => {
                              <h3 className="text-lg font-medium text-gray-800">Data Patch Details</h3>
                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Database System</label>
-                                    <select value={dbSystem} onChange={e => setDbSystem(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-black" required>
-                                        <option value="MS-SQL Server">MS-SQL Server</option>
-                                        <option value="MySQL">MySQL</option>
-                                        <option value="PostgreSQL">PostgreSQL</option>
-                                        <option value="Oracle DB">Oracle DB</option>
-                                        <option value="Other">Other</option>
-                                    </select>
+                                    <Select
+                                        label="Database System"
+                                        value={dbSystem}
+                                        onChange={e => setDbSystem(e.target.value)}
+                                        options={[
+                                            { value: 'MS-SQL Server', label: 'MS-SQL Server' },
+                                            { value: 'MySQL', label: 'MySQL' },
+                                            { value: 'PostgreSQL', label: 'PostgreSQL' },
+                                            { value: 'Oracle DB', label: 'Oracle DB' },
+                                            { value: 'Other', label: 'Other' }
+                                        ]}
+                                        required
+                                    />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Database Name</label>
-                                    <input type="text" value={dbName} onChange={e => setDbName(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-black" placeholder="e.g., policyservice" required />
+                                    <Input
+                                        label="Database Name"
+                                        value={dbName}
+                                        onChange={e => setDbName(e.target.value)}
+                                        placeholder="e.g., policyservice"
+                                        required
+                                    />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Schema</label>
-                                    <input type="text" value={dbSchema} onChange={e => setDbSchema(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-black" placeholder="e.g., dbo" required />
+                                    <Input
+                                        label="Schema"
+                                        value={dbSchema}
+                                        onChange={e => setDbSchema(e.target.value)}
+                                        placeholder="e.g., dbo"
+                                        required
+                                    />
                                 </div>
                             </div>
                         </div>
                     )}
 
                     <div className="flex justify-end space-x-4 pt-4">
-                        <button type="button" onClick={onClose} className="bg-gray-200 hover:bg-gray-300 text-black py-2 px-4 rounded" disabled={isSubmitting}>
+                        <Button type="button" variant="secondary" onClick={onClose} disabled={isSubmitting}>
                             Cancel
-                        </button>
-                        <button type="submit" className="bg-black hover:bg-gray-800 text-white py-2 px-4 rounded flex items-center" disabled={isSubmitting}>
-                            {isSubmitting ? <><FontAwesomeIcon icon={faSpinner} spin className="mr-2" /> Processing...</> : 'Generate & Deploy'}
-                        </button>
+                        </Button>
+                        <Button type="submit" variant="primary" disabled={isSubmitting} loading={isSubmitting} loadingText="Processing...">
+                            Generate & Deploy
+                        </Button>
                     </div>
                 </form>
             </div>

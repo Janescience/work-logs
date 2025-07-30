@@ -10,6 +10,7 @@ import {
   faCompress,
   faGripHorizontal
 } from '@fortawesome/free-solid-svg-icons';
+import { Button } from '@/components/ui';
 
 const DetailModal = ({ isOpen, onClose, title, content }) => {
   const [copyButtonText, setCopyButtonText] = useState('Copy');
@@ -93,23 +94,27 @@ const DetailModal = ({ isOpen, onClose, title, content }) => {
             </div>
             
             <div className="flex items-center gap-2">
-              <button 
+              <Button 
+                variant="ghost"
+                size="sm"
                 onClick={toggleFullscreen}
-                className="no-drag p-2 hover:bg-white/10 rounded transition-colors"
                 title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                className="text-white hover:bg-white/10"
               >
                 <FontAwesomeIcon 
                   icon={isFullscreen ? faCompress : faExpand} 
                   className="text-sm"
                 />
-              </button>
-              <button 
+              </Button>
+              <Button 
+                variant="ghost"
+                size="sm"
                 onClick={onClose} 
-                className="no-drag p-2 hover:bg-white/10 rounded transition-colors"
                 title="Close"
+                className="text-white hover:bg-white/10"
               >
                 <FontAwesomeIcon icon={faTimes} className="text-lg" />
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -121,17 +126,15 @@ const DetailModal = ({ isOpen, onClose, title, content }) => {
                 <span className="font-medium">{content ? content.length : 0}</span> characters
               </div>
               
-              <button
+              <Button
+                variant={copyIcon === faCheck ? "success" : "primary"}
+                size="sm"
                 onClick={handleCopy}
-                className={`no-drag px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 flex items-center gap-2
-                  ${copyIcon === faCheck 
-                    ? 'bg-green-600 hover:bg-green-700 text-white' 
-                    : 'bg-black hover:bg-gray-800 text-white'
-                  }`}
+                className="flex items-center gap-2"
               >
                 <FontAwesomeIcon icon={copyIcon} className="text-xs" />
                 {copyButtonText}
-              </button>
+              </Button>
             </div>
 
             {/* Content */}
@@ -150,12 +153,12 @@ const DetailModal = ({ isOpen, onClose, title, content }) => {
               Press <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs">Esc</kbd> to close
             </div>
             
-            <button
+            <Button
+              variant="secondary"
               onClick={onClose}
-              className="no-drag px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded-md transition-colors"
             >
               Close
-            </button>
+            </Button>
           </div>
         </div>
       </Draggable>

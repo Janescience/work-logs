@@ -96,10 +96,15 @@ export default function ManageRolesPage() {
     }
 
     return (
-        <div className="min-h-screen bg-white p-6">
-            <div className="mx-auto">
-                <PageHeader title="Manage Users" />
-                
+        <div className="min-h-screen bg-gray-50">
+            {/* Header */}
+            <div className="bg-white border-b border-gray-200">
+                <div className="mx-auto px-6 py-8">
+                    <PageHeader title="USERS" />
+                </div>
+            </div>
+
+            <div className="mx-auto p-6">
                 <ErrorMessage type="error" message={errorUsers} />
 
                 {loadingUsers ? (
@@ -140,7 +145,6 @@ export default function ManageRolesPage() {
                                         <div>
                                             <span className="font-medium text-gray-700">Type:</span>
                                             <Select
-                                                variant="outline"
                                                 size="sm"
                                                 value={user.type}
                                                 onChange={(e) => handleTypeChange(user.id, e.target.value)}
@@ -209,7 +213,6 @@ export default function ManageRolesPage() {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{user.teamName}</td>
                                     <td className="px-6 py-4 text-sm">
                                         <Select
-                                            variant="outline"
                                             size="sm"
                                             value={user.type}
                                             onChange={(e) => handleTypeChange(user.id, e.target.value)}

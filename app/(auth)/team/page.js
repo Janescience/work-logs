@@ -19,6 +19,7 @@ import { WorkCalendar } from '@/components/calendar';
 import { TeamSummary, PerformanceAlerts } from '@/components/dashboard';
 import { TeamRetrospective, TeamTimeline } from '@/components/calendar';
 import { BurndownChart, VelocityTracker } from '@/components/reports';
+import { PageHeader } from '@/components/ui';
 
 const getAvatarUrl = (username) => {
   if (!username) return 'https://placehold.co/40x40/e5e7eb/6b7280?text=NA';
@@ -207,100 +208,90 @@ export default function MyTeamPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-light text-gray-900">
-                  {team ? team.teamName : 'My Team'}
-                </h1>
-                <p className="mt-1 text-sm text-gray-600">
-                  Manage your team and track deployment progress
-                </p>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                {!team ? (
-                  <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2"
-                  >
-                    <FontAwesomeIcon icon={faUserPlus} /> Create Team
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => {
-                        setIsEditMode(true);
-                        setIsModalOpen(true);
-                        const memberIds = team.memberIds || team.members.map(m => m._id || m.userId);
-                        setSelectedMembers(memberIds);
-                      }}
-                      className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2"
-                    >
-                      <FontAwesomeIcon icon={faEdit} /> Edit Team
-                    </button>
-                    <button
-                      onClick={fetchTeamJiras}
-                      className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
-                      disabled={loadingData}
-                    >
-                      <FontAwesomeIcon icon={faSync} className={loadingData ? 'animate-spin' : ''} />
-                      Refresh
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Tabs */}
-            {team && Object.keys(teamData).length > 0 && (
-              <div className="mt-6 border-b border-gray-200 -mb-px">
-                <nav className="flex space-x-8">
-                  <button
-                    onClick={() => setActiveTab('overview')}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === 'overview'
-                        ? 'border-black text-gray-900'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    Overview
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('timeline')}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === 'timeline'
-                        ? 'border-black text-gray-900'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    Timeline
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('members')}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === 'members'
-                        ? 'border-black text-gray-900'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    Members ({Object.keys(teamData).length})
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('analytics')}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === 'analytics'
-                        ? 'border-black text-gray-900'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    Analytics
-                  </button>
-                </nav>
-              </div>
+        <div className="mx-auto px-6 py-8">
+          <PageHeader title={team ? team.teamName.toUpperCase() : 'MY TEAM'} />
+          
+          {/* Action buttons - Centered */}
+          <div className="flex items-center justify-center gap-3 mt-6">
+            {!team ? (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2"
+              >
+                <FontAwesomeIcon icon={faUserPlus} /> Create Team
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    setIsEditMode(true);
+                    setIsModalOpen(true);
+                    const memberIds = team.memberIds || team.members.map(m => m._id || m.userId);
+                    setSelectedMembers(memberIds);
+                  }}
+                  className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2"
+                >
+                  <FontAwesomeIcon icon={faEdit} /> Edit Team
+                </button>
+                <button
+                  onClick={fetchTeamJiras}
+                  className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                  disabled={loadingData}
+                >
+                  <FontAwesomeIcon icon={faSync} className={loadingData ? 'animate-spin' : ''} />
+                  Refresh
+                </button>
+              </>
             )}
           </div>
+
+          {/* Tabs */}
+          {team && Object.keys(teamData).length > 0 && (
+            <div className="mt-6 border-b border-gray-200 -mb-px">
+              <nav className="flex space-x-8">
+                <button
+                  onClick={() => setActiveTab('overview')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'overview'
+                      ? 'border-black text-gray-900'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Overview
+                </button>
+                <button
+                  onClick={() => setActiveTab('timeline')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'timeline'
+                      ? 'border-black text-gray-900'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Timeline
+                </button>
+                <button
+                  onClick={() => setActiveTab('members')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'members'
+                      ? 'border-black text-gray-900'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Members ({Object.keys(teamData).length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('analytics')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'analytics'
+                      ? 'border-black text-gray-900'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Analytics
+                </button>
+              </nav>
+            </div>
+          )}
         </div>
       </div>
 
@@ -577,15 +568,12 @@ export default function MyTeamPage() {
               
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Team Name
-                  </label>
-                  <input 
-                    type="text" 
-                    value={teamName} 
-                    onChange={(e) => setTeamName(e.target.value)} 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black" 
-                    placeholder="Enter team name" 
+                  <Input
+                    label="Team Name"
+                    value={teamName}
+                    onChange={(e) => setTeamName(e.target.value)}
+                    placeholder="Enter team name"
+                    required
                   />
                 </div>
                 

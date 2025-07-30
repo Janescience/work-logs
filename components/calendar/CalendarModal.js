@@ -33,7 +33,7 @@ const CalendarModal = ({ isOpen, onClose, allJiras }) => {
     if (isOpen) {
       setCopyButtonText('Copy Table');
       setCopyIcon(faClipboard);
-      setIsFullscreen(false);
+      setIsFullscreen(true); // เปิดเต็มจอเป็น default
     }
 
     return () => {

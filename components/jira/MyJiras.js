@@ -295,11 +295,11 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
         </a>
       </td>
       <td className="p-3 text-sm text-black">
-        <div className="truncate" title={issue.fields.summary}>
+        <div className="truncate whitespace-nowrap" title={issue.fields.summary}>
           {issue.fields.summary}
         </div>
       </td>
-      <td className="p-3 w-20 text-xs text-gray-500">
+      <td className="p-3 w-20 text-xs text-gray-500  whitespace-nowrap">
         {formatDate(issue.fields.created)}
       </td>
       {!readOnly && (
@@ -354,7 +354,7 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
   );
 
   return (
-    <div className="bg-white overflow-hidden">
+    <div className="bg-white overflow-hidden border border-gray-300">
       {/* Clean Header */}
       <div className="border-b border-gray-200 p-3">
         <div className="flex items-center justify-between">
@@ -421,6 +421,16 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-32">JIRA</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Summary</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-20">Created</th>
+                      {!readOnly && (
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase w-20">Tracked</th>
+                      )}
+                    </tr>
+                  </thead>
                   <tbody className="divide-y divide-gray-100">
                     {statusIssues.map(issue => (
                       <IssueRowGrouped 

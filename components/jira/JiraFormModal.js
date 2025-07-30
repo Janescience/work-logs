@@ -7,21 +7,22 @@ import { faTimes, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
 import { useFormState } from '@/hooks/ui';
 import { useApiData, useAsyncState } from '@/hooks/api';
+import { Input, Select, Button } from '@/components/ui';
 
 const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
   // Stable transform functions
   const projectsTransform = useCallback((data) => data.projects || [], []);
   const servicesTransform = useCallback((data) => data.services || [], []);
 
-  // API data hooks - only fetch when modal is open
-  const { data: projects = [] } = useApiData('/api/projects', [], {
-    transform: projectsTransform,
-    skip: () => !isOpen
+  // API data hooks - always fetch projects data
+  const { data: projects = [], loading: loadingProjects } = useApiData('/api/projects', [], {
+    transform: projectsTransform
   });
   
-  const { data: services = [] } = useApiData('/api/services', [], {
+  const { data: services = [], loading: loadingServices, error: servicesError, refetch: refetchServices } = useApiData('/api/services', [isOpen], {
     transform: servicesTransform,
-    skip: () => !isOpen
+    skip: () => !isOpen,
+    fetchOnMount: true
   });
   
   // Define default statuses instead of fetching from API
@@ -126,8 +127,19 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
   useEffect(() => {
     if (isOpen) {
       fetchJiraData();
+      // Force refetch of services when modal opens
+      if (refetchServices) {
+        refetchServices();
+      }
     }
-  }, [isOpen, fetchJiraData]);
+  }, [isOpen, fetchJiraData, refetchServices]);
+
+  // Debug logging for services data
+  useEffect(() => {
+    if (isOpen) {
+      console.log('JiraFormModal - Services data:', { services, loadingServices, servicesError, servicesLength: services?.length || 0 });
+    }
+  }, [isOpen, services, loadingServices, servicesError]);
 
   // Effect for edit mode - populate form when opening in edit mode
   useEffect(() => {
@@ -135,12 +147,11 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
       const formData = {
         jiraNumber: jira.jiraNumber || '',
         description: jira.description || '',
-        projectName: jira.projectId 
-          ? (typeof jira.projectId === 'object' ? jira.projectId.name : jira.projectName || '')
-          : (jira.projectName || ''),
-        projectId: jira.projectId 
-          ? (typeof jira.projectId === 'object' ? jira.projectId._id : jira.projectId)
-          : '',
+        projectName: jira.projectName || 
+          (jira.projectId && typeof jira.projectId === 'object' ? jira.projectId.name : ''),
+        projectId: jira.projectId && typeof jira.projectId === 'object' 
+          ? jira.projectId._id 
+          : jira.projectId || '',
         serviceName: jira.serviceName || '',
         jiraStatus: jira.jiraStatus || '',
         actualStatus: jira.actualStatus || '',
@@ -255,9 +266,9 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
         <div ref={nodeRef} className="bg-white w-full max-w-6xl rounded-lg shadow-xl flex flex-col max-h-[90vh]">
           <div className="modal-handle cursor-move px-6 py-4 bg-gray-50 border-b flex justify-between items-center">
             <h3 className="text-xl font-semibold text-gray-900">{isEditMode ? 'Edit Task' : 'New Task'}</h3>
-            <button onClick={onClose} className="text-gray-600 hover:text-black no-drag">
+            <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-600 hover:text-black">
               <FontAwesomeIcon icon={faTimes} size="lg" />
-            </button>
+            </Button>
           </div>
           <form onSubmit={handleSubmit} className="flex-grow overflow-y-auto">
             <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-4">
@@ -296,24 +307,24 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label htmlFor="project_id" className="block text-sm font-medium text-gray-700">Project</label>
-                  <select
-                    id="project_id"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
+                  <Select
+                    label="Project"
                     value={values.projectId}
                     onChange={(e) => {
                       const selectedProject = projects.find(p => p._id === e.target.value);
                       setValue('projectId', e.target.value);
                       setValue('projectName', selectedProject ? selectedProject.name : '');
                     }}
+                    options={[
+                      { value: '', label: loadingProjects ? 'Loading Projects...' : '-- Select Project --' },
+                      ...(Array.isArray(projects) ? projects.map(project => ({
+                        value: project._id,
+                        label: project.name
+                      })) : [])
+                    ]}
                     required
                     disabled={isSubmitting}
-                  >
-                    <option value="">-- Select Project --</option>
-                    {Array.isArray(projects) && projects.map(project => (
-                      <option key={project._id} value={project._id}>{project.name}</option>
-                    ))}
-                  </select>
+                  />
                   {errors.projectName && touched.projectName && (
                     <p className="mt-1 text-sm text-red-600">{errors.projectName}</p>
                   )}
@@ -322,36 +333,32 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                 {/* JIRA Number / DDL or Manual Input (Conditional based on jiraType) */}
                 {values.jiraType === 'My Jira' ? (
                   <div className="sm:col-span-2">
-                    <label htmlFor="jira_select" className="block text-sm font-medium text-gray-700">Select JIRA Issue</label>
-                    <div className="mt-1 flex items-center">
-                      <select
-                        id="jira_select"
-                        className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
+                    <div className="flex items-center">
+                      <Select
+                        label="Select JIRA Issue"
                         {...getFieldProps('selectedJiraFromDdl')}
                         onChange={handleJiraDdlChange}
+                        options={[
+                          { 
+                            value: '', 
+                            label: loadingAvailableJiras ? 'Loading JIRAs...' : '-- Select JIRA --' 
+                          },
+                          ...safeAvailableJiras.map(jiraIssue => ({
+                            value: jiraIssue.key,
+                            label: `${jiraIssue.key} - ${jiraIssue.fields?.summary || jiraIssue.summary}`
+                          }))
+                        ]}
                         required={values.jiraType === 'My Jira'}
                         disabled={loadingAvailableJiras || isSubmitting}
-                      >
-                        <option value="">
-                          {loadingAvailableJiras ? 'Loading JIRAs...' : '-- Select JIRA --'}
-                        </option>
-                        {safeAvailableJiras.map(jiraIssue => (
-                          <option key={jiraIssue.key} value={jiraIssue.key}>
-                            {jiraIssue.key} - {jiraIssue.fields?.summary || jiraIssue.summary}
-                          </option>
-                        ))}
-                      </select>
+                      />
                       {loadingAvailableJiras && <FontAwesomeIcon icon={faSpinner} spin className="ml-2 text-gray-500" />}
                     </div>
                   </div>
                 ) : (
                   <div className="sm:col-span-2">
-                    <label htmlFor="jira_number" className="block text-sm font-medium text-gray-700">Task Key / JIRA Number</label>
-                    <input
-                      type="text"
-                      id="jira_number"
+                    <Input
+                      label="Task Key / JIRA Number"
                       placeholder="IR-XXXX or Internal Key"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
                       {...getFieldProps('jiraNumber')}
                       required
                       disabled={isSubmitting}
@@ -363,11 +370,8 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                 )}
 
                 <div className="sm:col-span-2">
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
-                  <input
-                    type="text"
-                    id="description"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
+                  <Input
+                    label="Description"
                     {...getFieldProps('description')}
                     required
                     disabled={values.jiraType === 'My Jira' || isSubmitting} // Disable if My Jira type
@@ -378,11 +382,8 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                 </div>
 
                 <div>
-                  <label htmlFor="jira_status" className="block text-sm font-medium text-gray-700">JIRA Status (Live)</label>
-                  <input
-                    type="text"
-                    id="jira_status"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
+                  <Input
+                    label="JIRA Status (Live)"
                     {...getFieldProps('jiraStatus')}
                     disabled={values.jiraType === 'My Jira' || isSubmitting} // Disable if auto-filled from DDL
                     placeholder="Auto-filled from JIRA API"
@@ -390,33 +391,39 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                 </div>
 
                 <div>
-                  <label htmlFor="actual_status" className="block text-sm font-medium text-gray-700">Actual Status</label>
-                  <select
-                    id="actual_status"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
+                  <Select
+                    label="Actual Status"
                     {...getFieldProps('actualStatus')}
+                    options={[
+                      { value: '', label: '-- Select Status --' },
+                      ...actualStatuses.map(status => ({
+                        value: status,
+                        label: status
+                      }))
+                    ]}
                     disabled={isSubmitting}
-                  >
-                    <option value="">-- Select Status --</option>
-                    {actualStatuses.map(status => (
-                      <option key={status} value={status}>{status}</option>
-                    ))}
-                  </select>
+                  />
                 </div>
 
                 <div className="sm:col-span-1">
-                  <label htmlFor="service_name" className="block text-sm font-medium text-gray-700">Service</label>
-                  <select
-                    id="service_name"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
+                  <Select
+                    label="Service"
                     {...getFieldProps('serviceName')}
-                    disabled={isSubmitting}
-                  >
-                    <option value="">-- Select Service --</option>
-                    {Array.isArray(services) && services.map(service => (
-                      <option key={service.name} value={service.name}>{service.name}</option>
-                    ))}
-                  </select>
+                    options={[
+                      { 
+                        value: '', 
+                        label: loadingServices ? 'Loading Services...' : '-- Select Service --' 
+                      },
+                      ...(Array.isArray(services) ? services.map(service => ({
+                        value: service.name,
+                        label: service.name
+                      })) : [])
+                    ]}
+                    disabled={isSubmitting || loadingServices}
+                  />
+                  {servicesError && (
+                    <p className="mt-1 text-sm text-red-600">Error loading services: {servicesError}</p>
+                  )}
                 </div>
 
               </div>
@@ -427,68 +434,87 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                   <h4 className="text-md font-semibold text-gray-800 mb-2 mt-2">Deployment Schedule</h4>
                   <div className="grid grid-cols-1 gap-2">
                     <div>
-                      <label htmlFor="deploy_sit_date" className="block text-sm font-medium text-gray-700">SIT Date</label>
-                      <input type="date" id="deploy_sit_date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag" {...getFieldProps('deploySitDate')} disabled={isSubmitting} />
+                      <Input
+                        label="SIT Date"
+                        type="date"
+                        {...getFieldProps('deploySitDate')}
+                        disabled={isSubmitting}
+                      />
                     </div>
                     <div>
-                      <label htmlFor="deploy_uat_date" className="block text-sm font-medium text-gray-700">UAT Date</label>
-                      <input type="date" id="deploy_uat_date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag" {...getFieldProps('deployUatDate')} disabled={isSubmitting} />
+                      <Input
+                        label="UAT Date"
+                        type="date"
+                        {...getFieldProps('deployUatDate')}
+                        disabled={isSubmitting}
+                      />
                     </div>
                     <div>
-                      <label htmlFor="deploy_preprod_date" className="block text-sm font-medium text-gray-700">PREPROD Date</label>
-                      <input type="date" id="deploy_preprod_date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag" {...getFieldProps('deployPreprodDate')} disabled={isSubmitting} />
+                      <Input
+                        label="PREPROD Date"
+                        type="date"
+                        {...getFieldProps('deployPreprodDate')}
+                        disabled={isSubmitting}
+                      />
                     </div>
                     <div>
-                      <label htmlFor="deploy_prod_date" className="block text-sm font-medium text-gray-700">PROD Date</label>
-                      <input type="date" id="deploy_prod_date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag" {...getFieldProps('deployProdDate')} disabled={isSubmitting} />
+                      <Input
+                        label="PROD Date"
+                        type="date"
+                        {...getFieldProps('deployProdDate')}
+                        disabled={isSubmitting}
+                      />
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className='p-6 grid grid-cols-3 gap-5'>
+            <div className='p-6 grid grid-cols-2 gap-5'>
                 <div>
-                  <label htmlFor="env_detail" className="block text-sm font-medium text-gray-700">Environment Detail</label>
-                  <textarea
-                    id="env_detail"
-                    rows="8"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
+                  <Input
+                    label="Environment Detail"
+                    as="textarea"
+                    rows="12"
                     {...getFieldProps('envDetail')}
                     placeholder="Environment configurations, variables, etc."
                     disabled={isSubmitting}
-                  ></textarea>
+                    className="w-full min-h-[300px]"
+                  />
                 </div>
 
-                <div className="col-span-2">
-                  <label htmlFor="sql_detail" className="block text-sm font-medium text-gray-700">SQL Detail</label>
-                  <textarea
-                    id="sql_detail"
-                    rows="8"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm text-black no-drag"
+                <div>
+                  <Input
+                    label="SQL Detail"
+                    as="textarea"
+                    rows="12"
                     {...getFieldProps('sqlDetail')}
                     placeholder="SQL scripts, database changes, etc."
                     disabled={isSubmitting}
-                  ></textarea>
+                    className="w-full min-h-[300px]"
+                  />
                 </div>
             </div>
 
             <div className="px-6 py-4 bg-gray-50 border-t text-right sticky bottom-0">
-              <button
+              <Button
                 type="button"
-                className="inline-flex justify-center rounded-md border shadow-sm px-4 py-2 bg-red-500 text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 mr-3 no-drag"
+                variant="danger"
                 onClick={onClose}
                 disabled={isSubmitting}
+                className="mr-3"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
-                className="inline-flex justify-center rounded-md border border-transparent bg-black shadow-sm px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 no-drag"
+                variant="primary"
                 disabled={isSubmitting}
+                loading={isSubmitting}
+                loadingText="Saving..."
               >
-                {isSubmitting ? <><FontAwesomeIcon icon={faSpinner} spin className="mr-2" /> Saving...</> : 'Save'}
-              </button>
+                Save
+              </Button>
             </div>
           </form>
         </div>

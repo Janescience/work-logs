@@ -93,7 +93,9 @@ const ProductivityInsights = ({ allJiras }) => {
     // Productivity score (0-100)
     const targetHoursPerDay = 8;
     const actualAvgHours = daysWithLogs.size > 0 ? totalMonthlyHours / daysWithLogs.size : 0;
-    const productivityScore = Math.min(100, Math.round((actualAvgHours / targetHoursPerDay) * 100));
+    const consistencyScore = (daysWithLogs.size / workingDays) * 100; // 0-100
+    const hoursScore = Math.min(100, (actualAvgHours / targetHoursPerDay) * 100); // เป้าหมาย 6 ชม./วัน
+    const productivityScore = Math.round((consistencyScore * 0.6) + (hoursScore * 0.4));
 
     return {
       productivityScore,
@@ -121,7 +123,7 @@ const ProductivityInsights = ({ allJiras }) => {
   return (
     <div className="bg-white p-6 border border-gray-300 mb-6">
       <h2 className="text-xl font-light text-black mb-4 flex items-center">
-        <FontAwesomeIcon icon={faLightbulb} className="mr-2" />
+        <FontAwesomeIcon icon={faLightbulb} className="mr-2 text-gray-600 text-base" />
         Productivity Insights
       </h2>
 
@@ -169,7 +171,7 @@ const ProductivityInsights = ({ allJiras }) => {
         </div>
         
         <div className="bg-gray-50 p-3 rounded">
-          <div className="text-gray-600">Days Worked</div>
+          <div className="text-gray-600">Days Loged</div>
           <div className="text-xl font-bold text-black">{insights.daysWorked}/{insights.workingDays}</div>
         </div>
 

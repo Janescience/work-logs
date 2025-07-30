@@ -236,13 +236,13 @@ export default function DailyLogsPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="mx-auto px-6 py-6">
+        <div className="mx-auto px-6 py-8">
           <PageHeader title="DAILY LOGS" />
-          
-          {/* Stats */}
-          <div className="mx-auto">
-            <DailyLogsSummary stats={stats} />
-          </div>
+        </div>
+        
+        {/* Stats */}
+        <div className="mx-auto px-6 pb-6">
+          <DailyLogsSummary stats={stats} />
         </div>
       </div>
 
@@ -252,7 +252,6 @@ export default function DailyLogsPage() {
               {/* Search Box */}
               <div className="flex-1 relative">
                 <Input
-                  variant="outline"
                   size="sm"
                   placeholder="Search..."
                   value={searchQuery}
@@ -262,41 +261,40 @@ export default function DailyLogsPage() {
                 <FontAwesomeIcon icon={faSearch} className="absolute left-2.5 top-2.5 text-gray-400 text-xs" />
               </div>
 
-              {/* Filters */}
+              {/* Status Filter */}
               <Select
-                variant="outline"
                 size="sm"
                 value={activeFilters.status || 'all'}
                 onChange={(e) => setFilter('status', e.target.value)}
                 options={[
-                  { value: 'all', label: 'All' },
-                  { value: 'active', label: 'Active' },
+                  { value: 'all', label: 'All Status' },
+                  { value: 'active', label: 'In Progress' },
                   { value: 'done', label: 'Done' }
                 ]}
               />
 
+              {/* Date Filter */}
               <Select
-                variant="outline"
                 size="sm"
                 value={activeFilters.dateRange || 'thisMonth'}
                 onChange={(e) => setFilter('dateRange', e.target.value)}
                 options={[
                   { value: 'all', label: 'All Time' },
                   { value: 'today', label: 'Today' },
-                  { value: 'thisWeek', label: 'Week' },
-                  { value: 'thisMonth', label: 'Month' }
+                  { value: 'thisWeek', label: 'This Week' },
+                  { value: 'thisMonth', label: 'This Month' }
                 ]}
               />
 
+              {/* View Filter */}
               <Select
-                variant="outline"
                 size="sm"
                 value={viewBy}
                 onChange={(e) => setViewBy(e.target.value)}
                 options={[
-                  { value: 'list', label: 'List' },
-                  { value: 'project', label: 'Project' },
-                  { value: 'service', label: 'Service' }
+                  { value: 'list', label: 'List View' },
+                  { value: 'project', label: 'Group by Project' },
+                  { value: 'service', label: 'Group by Service' }
                 ]}
               />
             </div>
@@ -343,7 +341,6 @@ export default function DailyLogsPage() {
                   <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded shadow-lg p-4 z-50">
                     <div className="space-y-3">
                       <Select
-                        variant="outline"
                         size="sm"
                         value={exportMonth}
                         onChange={(e) => setExportMonth(parseInt(e.target.value))}
@@ -354,7 +351,6 @@ export default function DailyLogsPage() {
                       />
                       
                       <Select
-                        variant="outline"
                         size="sm"
                         value={exportYear}
                         onChange={(e) => setExportYear(parseInt(e.target.value))}

@@ -20,7 +20,7 @@ const Select = forwardRef(({
   const baseClasses = 'transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed';
   
   const variants = {
-    underline: 'w-full bg-transparent border-0 border-b border-gray-300 focus:border-black text-black',
+    underline: 'w-full bg-transparent border-0 border-b-2 border-gray-300 focus:border-black text-black',
     outline: 'w-full bg-white border border-gray-300 rounded-md focus:border-black focus:ring-1 focus:ring-black text-black',
     filled: 'w-full bg-gray-50 border border-transparent rounded-md focus:bg-white focus:border-black focus:ring-1 focus:ring-black text-black'
   };

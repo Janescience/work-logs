@@ -8,6 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faEdit, faTrashAlt, faSpinner, faChevronDown, faChevronUp, faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
 import { set } from 'mongoose';
+import { PageHeader, Input, Select } from '@/components/ui';
 
 export default function MasterDataServicesPage() {
     const { data: session, status } = useSession();
@@ -411,21 +412,25 @@ export default function MasterDataServicesPage() {
     }
 
     return (
-        <div className="min-h-screen bg-white p-4 sm:p-6">
-            <div className="mx-auto max-w-7xl">
-                <div className="text-center mb-6">
-                    <h1 className="text-2xl sm:text-4xl font-light text-black mb-4">Services</h1>
-                    <div className="w-16 h-px bg-black mx-auto"></div>
+        <div className="min-h-screen bg-gray-50">
+            {/* Header */}
+            <div className="bg-white border-b border-gray-200">
+                <div className="mx-auto px-6 py-8">
+                    <PageHeader title="SERVICES" />
+                    
+                    {/* Action button - Centered */}
+                    <div className="flex justify-center mt-6">
+                        <button
+                            onClick={() => openServiceModal()}
+                            className="px-4 py-2 bg-black text-white font-light tracking-wide hover:bg-gray-800 transition-colors flex items-center gap-2"
+                        >
+                            <FontAwesomeIcon icon={faPlus} className="text-sm" /> New Service
+                        </button>
+                    </div>
                 </div>
+            </div>
 
-                <div className="flex justify-end mb-4">
-                    <button
-                        onClick={() => openServiceModal()}
-                        className="px-4 sm:px-6 py-2 sm:py-3 bg-black text-white font-light tracking-wide hover:bg-gray-800 transition-colors flex items-center gap-2 text-sm sm:text-base"
-                    >
-                        <FontAwesomeIcon icon={faPlus} className="text-sm" /> New Service
-                    </button>
-                </div>
+            <div className="mx-auto p-6">
 
                 {/* Services Table - Mobile Responsive */}
                 <div className="border border-gray-200 bg-white overflow-hidden">
@@ -667,11 +672,8 @@ export default function MasterDataServicesPage() {
                             </h2>
                             <form onSubmit={handleSubmitService}>
                                 <div className="mb-4">
-                                    <label htmlFor="serviceName" className="block text-gray-700 text-sm  mb-2">Service Name</label>
-                                    <input
-                                        type="text"
-                                        id="serviceName"
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    <Input
+                                        label="Service Name"
                                         value={serviceName}
                                         onChange={(e) => setServiceName(e.target.value)}
                                         required
@@ -679,11 +681,8 @@ export default function MasterDataServicesPage() {
                                     />
                                 </div>
                                 <div className="mb-4">
-                                    <label htmlFor="serviceRepo" className="block text-gray-700 text-sm  mb-2">Git Repository</label>
-                                    <input
-                                        type="text"
-                                        id="serviceRepo"
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    <Input
+                                        label="Git Repository"
                                         value={serviceRepo}
                                         onChange={(e) => setServiceRepo(e.target.value)}
                                         required
@@ -691,11 +690,10 @@ export default function MasterDataServicesPage() {
                                     />
                                 </div>
                                 <div className="mb-4">
-                                    <label htmlFor="serviceDeployBy" className="block text-gray-700 text-sm  mb-2">Deploy By</label>
-                                    <textarea
-                                        id="serviceDeployBy"
+                                    <Input
+                                        label="Deploy By"
+                                        as="textarea"
                                         rows={3}
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                         value={serviceDeployBy}
                                         onChange={(e) => setServiceDeployBy(e.target.value)}
                                         required
@@ -737,94 +735,70 @@ export default function MasterDataServicesPage() {
                                     {/* Environment (Dropdown) */}
                                     <div className='grid grid-cols-2 gap-4'>
                                         <div>
-                                            <label htmlFor="env" className="block text-gray-700 text-sm  mb-2">Environment</label>
-                                            <select
-                                                id="env"
-                                                name="env"
+                                            <Select
+                                                label="Environment"
                                                 value={detailForm.env}
                                                 onChange={handleDetailFormChange}
-                                                className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline"
+                                                options={environments.map(env => ({ value: env, label: env }))}
                                                 required
                                                 disabled={isSubmittingDetail || currentDetail}
-                                            >
-                                                {environments.map(env => (
-                                                    <option key={env} value={env}>{env}</option>
-                                                ))}
-                                            </select>
+                                            />
                                         </div>
                                         {/* Server */}
                                         <div>
-                                            <label htmlFor="server" className="block text-gray-700 text-sm  mb-2">Server</label>
-                                            <input 
-                                                type="text" 
-                                                id="server" 
-                                                name="server" 
-                                                value={detailForm.server} 
-                                                onChange={handleDetailFormChange} 
-                                                className="shadow appearance-none border rounded w-full py-2 px-3 text-black " 
+                                            <Input
+                                                label="Server"
+                                                name="server"
+                                                value={detailForm.server}
+                                                onChange={handleDetailFormChange}
                                             />
                                         </div>
                                     </div>
                                     
                                     {/* URL */}
-                                    <div >
-                                        <label htmlFor="url" className="block text-gray-700 text-sm  mb-2">URL</label>
-                                        <input 
-                                            type="text" 
-                                            id="url" 
-                                            name="url" 
-                                            value={detailForm.url} 
-                                            onChange={handleDetailFormChange} 
-                                            className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline" 
+                                    <div>
+                                        <Input
+                                            label="URL"
+                                            name="url"
+                                            value={detailForm.url}
+                                            onChange={handleDetailFormChange}
                                         />
                                     </div>
                                     {/* Database 1 */}
                                     <div className="md:col-span-2">
-                                        <label htmlFor="database1" className="block text-gray-700 text-sm  mb-2">Database 1</label>
-                                        <input 
-                                            type="text" 
-                                            id="database1" 
-                                            name="database1" 
-                                            value={detailForm.database1} 
-                                            onChange={handleDetailFormChange} 
-                                            className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline" 
+                                        <Input
+                                            label="Database 1"
+                                            name="database1"
+                                            value={detailForm.database1}
+                                            onChange={handleDetailFormChange}
                                         />
                                     </div>
                                     {/* Database 2 */}
                                     <div className="md:col-span-2">
-                                        <label htmlFor="database2" className="block text-gray-700 text-sm mb-2">Database 2</label>
-                                        <input 
-                                            type="text" 
-                                            id="database2" 
-                                            name="database2" 
-                                            value={detailForm.database2} 
-                                            onChange={handleDetailFormChange} 
-                                            className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline" 
+                                        <Input
+                                            label="Database 2"
+                                            name="database2"
+                                            value={detailForm.database2}
+                                            onChange={handleDetailFormChange}
                                         />
                                     </div>
                                     {/* Database 3 */}
                                     <div className="md:col-span-2">
-                                        <label htmlFor="database3" className="block text-gray-700 text-sm  mb-2">Database 3</label>
-                                        <input 
-                                            type="text" 
-                                            id="database3" 
-                                            name="database3" 
-                                            value={detailForm.database3} 
-                                            onChange={handleDetailFormChange} 
-                                            className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline" 
+                                        <Input
+                                            label="Database 3"
+                                            name="database3"
+                                            value={detailForm.database3}
+                                            onChange={handleDetailFormChange}
                                         />
                                     </div>
                                     
                                     {/* SOAP */}
                                     <div className="md:col-span-2">
-                                        <label htmlFor="soap" className="block text-gray-700 text-sm mb-2">SOAP</label>
-                                        <input 
-                                            type="text" 
-                                            id="soap" 
-                                            name="soap" 
-                                            value={detailForm.soap} 
-                                            onChange={handleDetailFormChange} 
-                                            className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline" 
+                                        <Input
+                                            label="SOAP"
+                                            name="soap"
+                                            value={detailForm.soap}
+                                            onChange={handleDetailFormChange}
                                         />
                                     </div>
                                 </div>

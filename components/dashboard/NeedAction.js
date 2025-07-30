@@ -116,11 +116,11 @@ const NeedAction = ({ allJiras }) => {
   };
 
   const DeploymentItem = ({ deployment, highlight = false }) => (
-    <div className={`flex items-center justify-between p-3 rounded-lg border ${
+    <div className={`flex items-center justify-between p-3  border ${
       highlight ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200 hover:bg-gray-50'
     } transition-all`}>
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        <span className={`px-2 py-1 text-xs font-bold rounded border ${getStageColor(deployment.stage)}`}>
+        <span className={`px-2 py-1 text-xs font-bold  border ${getStageColor(deployment.stage)}`}>
           {deployment.stage}
         </span>
         <div className="flex-1 min-w-0">
@@ -165,19 +165,19 @@ const NeedAction = ({ allJiras }) => {
   const hasAnyDeployments = Object.values(deploymentSchedule).some(arr => arr.length > 0);
 
   return (
-    <div className="mb-6 bg-white border border-gray-300 rounded-lg overflow-hidden">
+    <div className="mb-6 bg-white border border-gray-300 overflow-hidden">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-light text-black flex items-center gap-2">
-              <FontAwesomeIcon icon={faRocket} className="text-gray-600" />
+              <FontAwesomeIcon icon={faRocket} className="text-gray-600 text-base" />
               Upcoming Deployments
             </h2>
             <p className="text-sm text-gray-600 mt-1">Next 2 weeks deployment schedule</p>
           </div>
-          <div className="text-sm text-gray-500">
-            <FontAwesomeIcon icon={faCalendarDays} className="mr-1" />
+          <div className="text-xs text-gray-500">
+            {/* <FontAwesomeIcon icon={faCalendarDays} className="mr-1" /> */}
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
           </div>
         </div>

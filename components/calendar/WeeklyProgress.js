@@ -56,14 +56,14 @@ const WeeklyProgress = ({ allJiras }) => {
   return (
     <div className="bg-white p-6 border border-gray-300">
       <h2 className="text-xl font-light text-black mb-4 flex items-center">
-        <FontAwesomeIcon icon={faChartLine} className="mr-2" />
+        <FontAwesomeIcon icon={faChartLine} className="mr-2 text-gray-600 text-base" />
         Weekly Progress
       </h2>
       
       <div className="mb-4">
         <div className="flex justify-between text-sm text-gray-600">
           <span>Total Hours This Week</span>
-          <span className="font-bold text-black">{weekData.totalWeekHours.toFixed(1)} hrs</span>
+          <span className=" text-black">{weekData.totalWeekHours.toFixed(1)} hrs</span>
         </div>
       </div>
 
@@ -77,12 +77,12 @@ const WeeklyProgress = ({ allJiras }) => {
               <div className="relative h-8 bg-gray-100 rounded overflow-hidden">
                 <div 
                   className={`absolute left-0 top-0 h-full transition-all duration-500 ${
-                    day.isToday ? 'bg-black' : day.isPast ? 'bg-gray-400' : 'bg-gray-200'
+                    day.isToday ? 'bg-black' : day.isPast ? 'bg-gray-600' : 'bg-gray-400'
                   }`}
                   style={{ width: `${weekData.maxHours > 0 ? (day.hoursLogged / weekData.maxHours) * 100 : 0}%` }}
                 />
                 <div className="absolute inset-0 flex items-center px-2">
-                  <span className="text-xs font-medium">
+                  <span className="text-xs ">
                     {day.hoursLogged > 0 && `${day.hoursLogged.toFixed(1)}h`}
                   </span>
                 </div>

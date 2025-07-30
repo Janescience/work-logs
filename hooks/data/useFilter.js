@@ -10,6 +10,13 @@ const useFilter = (data = [], filterConfig = {}) => {
   const [activeFilters, setActiveFilters] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Helper function to get nested object values - moved up
+  const getNestedValue = useCallback((obj, path) => {
+    return path.split('.').reduce((value, key) => {
+      return value && value[key] !== undefined ? value[key] : null;
+    }, obj);
+  }, []);
+
   const setFilter = useCallback((key, value) => {
     setActiveFilters(prev => ({
       ...prev,
@@ -94,14 +101,7 @@ const useFilter = (data = [], filterConfig = {}) => {
     });
 
     return filtered;
-  }, [data, activeFilters, searchQuery, filterConfig]);
-
-  // Helper function to get nested object values
-  const getNestedValue = (obj, path) => {
-    return path.split('.').reduce((value, key) => {
-      return value && value[key] !== undefined ? value[key] : null;
-    }, obj);
-  };
+  }, [data, activeFilters, searchQuery, filterConfig, getNestedValue]);
 
   // Get unique values for a specific field (useful for dropdowns)
   const getUniqueValues = useCallback((field) => {
@@ -111,7 +111,7 @@ const useFilter = (data = [], filterConfig = {}) => {
       .filter(value => value !== null && value !== undefined && value !== '');
     
     return [...new Set(values)].sort();
-  }, [data]);
+  }, [data, getNestedValue]);
 
   // Get filter statistics
   const getFilterStats = useCallback(() => {

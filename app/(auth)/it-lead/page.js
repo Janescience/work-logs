@@ -211,17 +211,13 @@ export default function ITLeadSummaryPage() {
         <div className="min-h-screen bg-gray-50 text-black">
             <div className="mx-auto">
                 {/* Header */}
-                <div className="bg-white border-b border-gray-200 px-6 py-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-light text-black mb-2">IT Leadership Dashboard</h1>
-                            <p className="text-gray-600">Comprehensive organizational performance and resource management</p>
-                        </div>
+                <div className="bg-white border-b border-gray-200">
+                    <div className="mx-auto px-6 py-8">
+                        <PageHeader title="BACKLOG" />
                         
-                        {/* Date Filters */}
-                        <div className="flex items-center gap-4">
+                        {/* Date Filters - Centered */}
+                        <div className="flex items-center justify-center gap-4 mt-6">
                             <Select
-                                variant="outline"
                                 value={date.month}
                                 onChange={(e) => handleDateChange({ target: { name: 'month', value: e.target.value } })}
                                 options={Array.from({ length: 12 }, (_, i) => ({
@@ -230,7 +226,6 @@ export default function ITLeadSummaryPage() {
                                 }))}
                             />
                             <Select
-                                variant="outline"
                                 value={date.year}
                                 onChange={(e) => handleDateChange({ target: { name: 'year', value: e.target.value } })}
                                 options={Array.from({ length: 5 }, (_, i) => {
