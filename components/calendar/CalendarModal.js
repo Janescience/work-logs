@@ -22,6 +22,9 @@ const CalendarModal = ({ isOpen, onClose, allJiras }) => {
   const [copy2Icon, setCopy2Icon] = useState(faClipboard);
   const [jiraStatuses, setJiraStatuses] = useState(new Map());
   const [loadingJiras, setLoadingJiras] = useState(false);
+  // Add state to track current viewing month/year
+  const [currentViewMonth, setCurrentViewMonth] = useState(new Date().getMonth());
+  const [currentViewYear, setCurrentViewYear] = useState(new Date().getFullYear());
   const nodeRef = useRef(null);
 
   // Fetch JIRA statuses
@@ -86,11 +89,9 @@ const CalendarModal = ({ isOpen, onClose, allJiras }) => {
 
   if (!isOpen) return null;
 
-  // Copy table data to clipboard - matching WorkCalendar functionality
+  // Copy table data to clipboard - using current viewing month/year
   const handleCopy = () => {
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    const numDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const numDays = new Date(currentViewYear, currentViewMonth + 1, 0).getDate();
     
     // Helper function to clean text for Excel
     const cleanTextForExcel = (text) => {
@@ -112,7 +113,8 @@ const CalendarModal = ({ isOpen, onClose, allJiras }) => {
     allJiras.forEach(jira => {
       jira.dailyLogs.forEach(log => {
         const logDate = new Date(log.logDate);
-        if (logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear) {
+        // Use currentViewMonth and currentViewYear instead of current date
+        if (logDate.getMonth() === currentViewMonth && logDate.getFullYear() === currentViewYear) {
           const dayOfMonth = logDate.getDate();
           const hours = parseFloat(log.timeSpent || 0);
           
@@ -171,18 +173,16 @@ const CalendarModal = ({ isOpen, onClose, allJiras }) => {
     });
   };
 
-  // Copy custom format data to clipboard
+  // Copy custom format data to clipboard - using current viewing month/year
   const handleCopy2 = () => {
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    
-    // Create a map to organize data by JIRA - using the same logic as WorkCalendar
+    // Create a map to organize data by JIRA
     const jiraMap = new Map();
     
     allJiras.forEach(jira => {
       jira.dailyLogs.forEach(log => {
         const logDate = new Date(log.logDate);
-        if (logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear) {
+        // Use currentViewMonth and currentViewYear instead of current date
+        if (logDate.getMonth() === currentViewMonth && logDate.getFullYear() === currentViewYear) {
           if (!jiraMap.has(jira.jiraNumber)) {
             jiraMap.set(jira.jiraNumber, {
               jiraNumber: jira.jiraNumber || '',
@@ -318,14 +318,20 @@ const CalendarModal = ({ isOpen, onClose, allJiras }) => {
           <div className="flex-1 overflow-hidden flex flex-col bg-gray-50">
             {/* Content */}
             <div className="flex-1 overflow-y-auto no-drag">
-              <WorkCalendar allJiras={allJiras} />
+              <WorkCalendar 
+                allJiras={allJiras} 
+                onMonthChange={(month, year) => {
+                  setCurrentViewMonth(month);
+                  setCurrentViewYear(year);
+                }}
+              />
             </div>
           </div>
 
           {/* Footer */}
           <div className="p-4 bg-white border-t border-gray-200 flex justify-between items-center">
             <div className="text-xs text-gray-500">
-              Press <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs">Esc</kbd> to close
+              Press <kbd className="px-2 py-1 bg-gray-100 border-gray-300 rounded text-xs">Esc</kbd> to close
             </div>
             
             <button

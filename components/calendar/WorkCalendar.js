@@ -45,12 +45,19 @@ function useHolidays(year) {
     return { holidays, holidayDetails, isLoading: loading };
 }
 
-export default function WorkCalendar({ allJiras }) {
+export default function WorkCalendar({ allJiras, onMonthChange }) {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [jiraStatuses, setJiraStatuses] = useState(new Map());
     const [loadingJiras, setLoadingJiras] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
     const { holidays, holidayDetails, isLoading } = useHolidays(currentDate.getFullYear());
+
+    // Call onMonthChange when component mounts and when currentDate changes
+    useEffect(() => {
+        if (onMonthChange) {
+            onMonthChange(currentDate.getMonth(), currentDate.getFullYear());
+        }
+    }, [currentDate, onMonthChange]);
 
     // Fetch JIRA statuses
     useEffect(() => {
@@ -171,8 +178,13 @@ export default function WorkCalendar({ allJiras }) {
         };
     }, [allJiras, currentDate, holidays, holidayDetails, jiraStatuses]);
 
-    const goToPreviousMonth = useCallback(() => setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1)), []);
-    const goToNextMonth = useCallback(() => setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1)), []);
+    const goToPreviousMonth = useCallback(() => {
+        setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1));
+    }, []);
+
+    const goToNextMonth = useCallback(() => {
+        setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1));
+    }, []);
 
     // Copy table data to clipboard
     const copyTableData = useCallback(() => {
