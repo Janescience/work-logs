@@ -128,7 +128,7 @@ const JiraItem = ({
       updateOptimisticLog(jira._id, editingLogId, editedLogData);
       toast.success('Log updated successfully!');
 
-      const response = await fetch(`/api/jiras/${jira._id}/logs`, {
+      const response = await fetch(`/api/jiras/${jira._id}/logs?logId=${editingLogId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

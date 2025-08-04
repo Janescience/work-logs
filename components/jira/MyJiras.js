@@ -245,7 +245,6 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
         body: JSON.stringify({
           jiraNumber: issue.key,
           description: issue.fields.summary,
-          projectName: issue.fields.project?.name || 'External JIRA',
           actualStatus: 'In Progress',
           assignee: issue.fields.assignee?.displayName || userEmail
         }),
