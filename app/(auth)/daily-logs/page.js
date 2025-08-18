@@ -5,8 +5,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faPlus, 
-  faSpinner, 
-  faSearch
+  faTrash,
+  faCalendar,
+  faFileExport, 
+  faSearch,
+  faCopy
 } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
 import { Button, Input, Select, LoadingSpinner, PageHeader, ErrorMessage } from '@/components/ui';
@@ -55,6 +58,13 @@ export default function DailyLogsPage() {
     activeFilters,
     setFilter
   } = useJiraFilter(allJiras);
+
+  // Set default date filter if not set
+  useEffect(() => {
+    if (!activeFilters.dateRange) {
+      setFilter('dateRange', 'thisMonth');
+    }
+  }, [activeFilters.dateRange, setFilter]);
   
   // Additional view states
   const [viewBy, setViewBy] = useState('list'); // list, project, service
@@ -86,6 +96,9 @@ export default function DailyLogsPage() {
 
   // Statistics using new hook
   const stats = useJiraStats(filteredJiras);
+  
+  // Debug: log filtered results
+  console.log(`Date filter: ${activeFilters.dateRange || 'thisMonth'}, Active filters:`, activeFilters, `Total JIRAs: ${allJiras.length}, Filtered JIRAs: ${filteredJiras.length}`);
 
   // No longer needed - handled by useApiData hook
 
@@ -105,6 +118,167 @@ export default function DailyLogsPage() {
     await new Promise(resolve => setTimeout(resolve, 300)); 
     window.location.href = `/api/export/excel?startDate=${startDate}&endDate=${endDate}`;
     closeModal('exportMenu');
+  };
+
+  const formatDateRange = (range) => {
+    const now = new Date();
+    
+    switch (range) {
+      case 'today':
+        return now.toDateString() === now.toDateString();
+      case 'thisWeek':
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay());
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        return { start: weekStart, end: weekEnd };
+      case 'thisMonth':
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        return { start: monthStart, end: monthEnd };
+      default:
+        return null;
+    }
+  };
+
+  const isDateInRange = (logDate, range) => {
+    if (range === 'all') return true;
+    
+    const targetDate = new Date(logDate);
+    const now = new Date();
+    
+    switch (range) {
+      case 'today':
+        return targetDate.toDateString() === now.toDateString();
+      case 'thisWeek':
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay());
+        weekStart.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        weekEnd.setHours(23, 59, 59, 999);
+        return targetDate >= weekStart && targetDate <= weekEnd;
+      case 'thisMonth':
+        return targetDate.getMonth() === now.getMonth() && 
+               targetDate.getFullYear() === now.getFullYear();
+      default:
+        return true;
+    }
+  };
+
+  const handleCopyWorkSummary = async () => {
+    try {
+      let summaryContent = [];
+
+      const formatJiraContentAsTable = (jira, isFirstInGroup = false) => {
+        // Filter daily logs based on date filter
+        const filteredLogs = jira.dailyLogs ? jira.dailyLogs.filter(log => 
+          isDateInRange(log.logDate, activeFilters.dateRange || 'thisMonth')
+        ) : [];
+
+        const project = jira.projectName || '';
+        const service = jira.serviceName || '';
+        const jiraStatus = externalStatuses[jira.jiraNumber] || 'Unknown';
+        const actualStatus = jira.actualStatus || 'No Status';
+        
+        // Format daily logs - join with semicolon to keep in single cell
+        const dailyLogText = filteredLogs.length > 0 ? 
+          filteredLogs
+            .sort((a, b) => new Date(a.logDate) - new Date(b.logDate))
+            .map(log => {
+              const logDate = new Date(log.logDate).toLocaleDateString('en-GB');
+              return `${logDate}: ${log.taskDescription} (${log.timeSpent}h)`;
+            })
+            .join('; ') : '-';
+        
+        // Format deploy dates - join with semicolon to keep in single cell
+        const deployDates = [
+          jira.deploySitDate ? `SIT: ${new Date(jira.deploySitDate).toLocaleDateString('en-GB')}` : '',
+          jira.deployUatDate ? `UAT: ${new Date(jira.deployUatDate).toLocaleDateString('en-GB')}` : '',
+          jira.deployPreprodDate ? `PREPROD: ${new Date(jira.deployPreprodDate).toLocaleDateString('en-GB')}` : '',
+          jira.deployProdDate ? `PROD: ${new Date(jira.deployProdDate).toLocaleDateString('en-GB')}` : ''
+        ].filter(Boolean).join('; ') || '-';
+        
+        // Create table row with Project column
+        return `${project}\t${service}\t${jira.jiraNumber}\t${jira.description}\t${jiraStatus}\t${actualStatus}\t${dailyLogText}\t${deployDates}`;
+      };
+
+      // Create table headers
+      summaryContent.push('Project\tService\tJira Number\tDescription\tJira Status\tActual Status\tDaily Log\tDeploy Date');
+      summaryContent.push(''); // Empty row for spacing
+
+      // Generate content based on viewBy filter
+      if (viewBy === 'project') {
+        // Group by Project
+        const groupedByProject = {};
+        filteredJiras.forEach(jira => {
+          const project = jira.projectName || 'No Project';
+          if (!groupedByProject[project]) {
+            groupedByProject[project] = [];
+          }
+          groupedByProject[project].push(jira);
+        });
+
+        Object.entries(groupedByProject).forEach(([project, jiras], groupIndex) => {
+          if (groupIndex > 0) summaryContent.push(''); // Add spacing between projects
+          summaryContent.push(`PROJECT: ${project}`);
+          summaryContent.push('Project\tService\tJira Number\tDescription\tJira Status\tActual Status\tDaily Log\tDeploy Date');
+          
+          jiras.forEach(jira => {
+            summaryContent.push(formatJiraContentAsTable(jira));
+          });
+        });
+
+      } else if (viewBy === 'service') {
+        // Group by Service
+        const groupedByService = {};
+        filteredJiras.forEach(jira => {
+          const service = jira.serviceName || 'No Service';
+          if (!groupedByService[service]) {
+            groupedByService[service] = [];
+          }
+          groupedByService[service].push(jira);
+        });
+
+        Object.entries(groupedByService).forEach(([service, jiras], serviceIndex) => {
+          if (serviceIndex > 0) summaryContent.push(''); // Add spacing between services
+          summaryContent.push(`SERVICE: ${service}`);
+          
+          // Group by project within service
+          const projectsInService = {};
+          jiras.forEach(jira => {
+            const project = jira.projectName || 'No Project';
+            if (!projectsInService[project]) {
+              projectsInService[project] = [];
+            }
+            projectsInService[project].push(jira);
+          });
+
+          Object.entries(projectsInService).forEach(([project, projectJiras], projectIndex) => {
+            if (projectIndex > 0) summaryContent.push('');
+            summaryContent.push(`  PROJECT: ${project}`);
+            summaryContent.push('Project\tService\tJira Number\tDescription\tJira Status\tActual Status\tDaily Log\tDeploy Date');
+            
+            projectJiras.forEach(jira => {
+              summaryContent.push(formatJiraContentAsTable(jira));
+            });
+          });
+        });
+
+      } else {
+        // List view - Simple table without grouping
+        filteredJiras.forEach(jira => {
+          summaryContent.push(formatJiraContentAsTable(jira));
+        });
+      }
+
+      const summaryText = summaryContent.join('\n');
+      await navigator.clipboard.writeText(summaryText);
+      toast.success('Work summary copied to clipboard!');
+    } catch (error) {
+      toast.error('Failed to copy work summary');
+      console.error('Copy failed:', error);
+    }
   };
 
   const handleSaveJira = async (jiraId, jiraData) => {
@@ -316,6 +490,7 @@ export default function DailyLogsPage() {
                   size="sm"
                   onClick={handleBulkDelete}
                 >
+                  <FontAwesomeIcon icon={faTrash} className="text-xs mr-2" />
                   Delete ({selectedTasks.length})
                 </Button>
               )}
@@ -325,7 +500,18 @@ export default function DailyLogsPage() {
                 size="sm"
                 onClick={() => calendarModal.open()}
               >
-                Summary
+                <FontAwesomeIcon icon={faCalendar} className="text-xs mr-2" />              
+                  Month Summary
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyWorkSummary}
+                title="Copy work summary based on current filters"
+              >
+                <FontAwesomeIcon icon={faCopy} className="text-xs mr-2" />
+                Copy Summary
               </Button>
 
               <div className="relative">
@@ -334,6 +520,7 @@ export default function DailyLogsPage() {
                   size="sm"
                   onClick={() => openModal('exportMenu')}
                 >
+                  <FontAwesomeIcon icon={faFileExport} className="text-xs mr-2" />
                   Export
                 </Button>
 
@@ -383,6 +570,7 @@ export default function DailyLogsPage() {
         <TaskListView
           jiras={filteredJiras}
           viewBy={viewBy}
+          dateRange={activeFilters.dateRange || 'thisMonth'}
           onAddLog={handleAddLog}
           onEditJira={handleEditJira}
           onDeleteJira={handleDeleteJira}

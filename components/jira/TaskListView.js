@@ -8,6 +8,7 @@ import { JiraItem } from '@/components/jira';
 const TaskListView = ({ 
   jiras, 
   viewBy, 
+  dateRange,
   onAddLog, 
   onEditJira, 
   onDeleteJira,
@@ -214,6 +215,7 @@ const TaskListView = ({
                       <div className="pl-12">
                         <JiraItem
                           jira={jira}
+                          dateRange={dateRange}
                           logOptions={[]}
                           onAddLog={onAddLog}
                           onEditJira={onEditJira}

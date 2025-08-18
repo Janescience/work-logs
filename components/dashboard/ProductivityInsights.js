@@ -9,8 +9,10 @@ import {
   faChartLine,
   faFire
 } from '@fortawesome/free-solid-svg-icons';
+import { useWorkingDays } from '@/hooks/useWorkingDays';
 
 const ProductivityInsights = ({ allJiras }) => {
+  const { getCurrentMonthWorkingDays } = useWorkingDays();
   const insights = useMemo(() => {
     const today = new Date();
     const currentMonth = today.getMonth();
@@ -67,12 +69,8 @@ const ProductivityInsights = ({ allJiras }) => {
       });
     });
 
-    // Calculate working days in current month
-    const firstDay = new Date(currentYear, currentMonth, 1);
-    const lastDay = new Date(currentYear, currentMonth + 1, 0);
-    for (let d = firstDay; d <= lastDay; d.setDate(d.getDate() + 1)) {
-      if (d.getDay() !== 0 && d.getDay() !== 6) workingDays++;
-    }
+    // Get working days in current month (including holidays)
+    workingDays = getCurrentMonthWorkingDays(true);
 
     // Find most productive day of week
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

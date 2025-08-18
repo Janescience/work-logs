@@ -10,7 +10,8 @@ import {
   faChevronDown, faChevronUp, faSync,
   faCalendarAlt, faExclamationTriangle,
   faCheckCircle, faClock, faUserPlus,
-  faFilter, faTimeline, faChartLine
+  faFilter, faTimeline, faChartLine,
+  faTable, faSearch, faCopy
 } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
 // Organized imports by category
@@ -18,8 +19,8 @@ import { MyJiras } from '@/components/jira';
 import { WorkCalendar } from '@/components/calendar';
 import { TeamSummary, PerformanceAlerts } from '@/components/dashboard';
 import { TeamRetrospective, TeamTimeline } from '@/components/calendar';
-import { BurndownChart, VelocityTracker } from '@/components/reports';
-import { PageHeader } from '@/components/ui';
+import { VelocityTracker } from '@/components/reports';
+import { PageHeader, Button, Input, Select } from '@/components/ui';
 
 const getAvatarUrl = (username) => {
   if (!username) return 'https://placehold.co/40x40/e5e7eb/6b7280?text=NA';
@@ -40,7 +41,12 @@ export default function MyTeamPage() {
   const [loadingData, setLoadingData] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [collapsedMembers, setCollapsedMembers] = useState({});
-  const [activeTab, setActiveTab] = useState('overview'); // overview, timeline, members, analytics
+  const [activeTab, setActiveTab] = useState('overview'); // overview, timeline, members, analytics, table
+  
+  // Member table view states - object with userId as key
+  const [memberTableStates, setMemberTableStates] = useState({});
+  const [memberExternalStatuses, setMemberExternalStatuses] = useState({});
+  const [expandedDailyLogs, setExpandedDailyLogs] = useState({}); // Track expanded daily logs per jira
 
   const toggleMemberCollapse = (userId) => {
     setCollapsedMembers(prev => ({
@@ -178,6 +184,205 @@ export default function MyTeamPage() {
       }
     });
     return allJiras;
+  };
+
+  const getAllJirasFlat = () => {
+    const allJiras = [];
+    Object.values(teamData).forEach(userData => {
+      if (userData.jiras) {
+        userData.jiras.forEach(jira => {
+          allJiras.push({
+            ...jira,
+            assignee: userData.memberInfo.username,
+            assigneeEmail: userData.memberInfo.email
+          });
+        });
+      }
+    });
+    return allJiras;
+  };
+
+  // Initialize member table state
+  const initializeMemberTableState = (userId) => {
+    if (!memberTableStates[userId]) {
+      setMemberTableStates(prev => ({
+        ...prev,
+        [userId]: {
+          showTableView: false,
+          searchQuery: '',
+          statusFilter: 'all',
+          dateFilter: 'thisMonth',
+          viewFilter: 'list'
+        }
+      }));
+    }
+  };
+
+  const updateMemberTableState = (userId, updates) => {
+    setMemberTableStates(prev => ({
+      ...prev,
+      [userId]: {
+        ...prev[userId],
+        ...updates
+      }
+    }));
+  };
+
+  const toggleDailyLogExpansion = (jiraId) => {
+    setExpandedDailyLogs(prev => ({
+      ...prev,
+      [jiraId]: !prev[jiraId]
+    }));
+  };
+
+  // Fetch external Jira statuses for member
+  const fetchMemberExternalStatuses = async (userId, jiras) => {
+    const jiraNumbers = [...new Set(jiras.map(j => j.jiraNumber).filter(Boolean))].join(',');
+    if (!jiraNumbers) return;
+    
+    try {
+      const res = await fetch(`/api/jira-status?jiraNumbers=${jiraNumbers}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMemberExternalStatuses(prev => ({
+          ...prev,
+          [userId]: data.statuses || {}
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to fetch external statuses:', error);
+    }
+  };
+
+  const isDateInRange = (logDate, range) => {
+    if (range === 'all') return true;
+    
+    const targetDate = new Date(logDate);
+    const now = new Date();
+    
+    switch (range) {
+      case 'today':
+        return targetDate.toDateString() === now.toDateString();
+      case 'thisWeek':
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay());
+        weekStart.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        weekEnd.setHours(23, 59, 59, 999);
+        return targetDate >= weekStart && targetDate <= weekEnd;
+      case 'thisMonth':
+        return targetDate.getMonth() === now.getMonth() && 
+               targetDate.getFullYear() === now.getFullYear();
+      default:
+        return true;
+    }
+  };
+
+  // Filter member jiras based on member table state
+  const filterMemberJiras = (jiras, userId) => {
+    const state = memberTableStates[userId];
+    if (!state) return jiras;
+
+    let filtered = [...jiras];
+
+    // Search filter
+    if (state.searchQuery?.trim()) {
+      const query = state.searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(jira => 
+        jira.jiraNumber?.toLowerCase().includes(query) ||
+        jira.description?.toLowerCase().includes(query) ||
+        jira.projectName?.toLowerCase().includes(query) ||
+        jira.serviceName?.toLowerCase().includes(query)
+      );
+    }
+
+    // Status filter
+    if (state.statusFilter && state.statusFilter !== 'all') {
+      filtered = filtered.filter(jira => {
+        const status = (jira.actualStatus || '').toLowerCase();
+        switch (state.statusFilter) {
+          case 'active':
+            return status === 'in progress';
+          case 'done':
+            return status === 'done';
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Date filter - check if jira has logs within the date range
+    if (state.dateFilter && state.dateFilter !== 'all') {
+      filtered = filtered.filter(jira => {
+        const hasLogsInRange = jira.dailyLogs && jira.dailyLogs.some(log => 
+          isDateInRange(log.logDate, state.dateFilter)
+        );
+        const dueDateInRange = jira.dueDate && isDateInRange(jira.dueDate, state.dateFilter);
+        return hasLogsInRange || dueDateInRange;
+      });
+    }
+
+    return filtered;
+  };
+
+  const formatMemberJiraAsTable = (jira, userId) => {
+    const state = memberTableStates[userId] || { dateFilter: 'thisMonth' };
+    const filteredLogs = jira.dailyLogs ? jira.dailyLogs.filter(log => 
+      isDateInRange(log.logDate, state.dateFilter)
+    ) : [];
+
+    const project = jira.projectName || '';
+    const service = jira.serviceName || '';
+    const jiraStatus = memberExternalStatuses[userId]?.[jira.jiraNumber] || 'Unknown';
+    const actualStatus = jira.actualStatus || 'No Status';
+    
+    // Calculate total hours
+    const totalHours = filteredLogs.reduce((sum, log) => sum + parseFloat(log.timeSpent || 0), 0);
+    const totalHoursText = `${totalHours}h (${filteredLogs.length} logs)`;
+    
+    // Format daily logs with better structure for copying
+    const dailyLogText = filteredLogs.length > 0 ? 
+      filteredLogs
+        .sort((a, b) => new Date(a.logDate) - new Date(b.logDate))
+        .map(log => {
+          const logDate = new Date(log.logDate).toLocaleDateString('en-GB');
+          return `[${logDate}] ${log.taskDescription} (${log.timeSpent}h)`;
+        })
+        .join(' | ') : 'No daily logs';
+    
+    // Format deploy dates with better structure for copying
+    const deployDates = [
+      jira.deploySitDate ? `SIT: ${new Date(jira.deploySitDate).toLocaleDateString('en-GB')}` : '',
+      jira.deployUatDate ? `UAT: ${new Date(jira.deployUatDate).toLocaleDateString('en-GB')}` : '',
+      jira.deployPreprodDate ? `PREPROD: ${new Date(jira.deployPreprodDate).toLocaleDateString('en-GB')}` : '',
+      jira.deployProdDate ? `PROD: ${new Date(jira.deployProdDate).toLocaleDateString('en-GB')}` : ''
+    ].filter(Boolean).join(' | ') || 'No deployment dates';
+    
+    return `${project}\t${service}\t${jira.jiraNumber}\t${jira.description}\t${jiraStatus}\t${actualStatus}\t${totalHoursText}\t${dailyLogText}\t${deployDates}`;
+  };
+
+  const handleCopyMemberSummary = async (userId, memberName, jiras) => {
+    try {
+      const filteredJiras = filterMemberJiras(jiras, userId);
+      let summaryContent = [];
+
+      summaryContent.push(`${memberName} - Work Summary`);
+      summaryContent.push('');
+      summaryContent.push('Project\tService\tJira Number\tDescription\tJira Status\tActual Status\tTotal Hours\tDaily Log\tDeploy Date');
+      summaryContent.push('');
+
+      filteredJiras.forEach(jira => {
+        summaryContent.push(formatMemberJiraAsTable(jira, userId));
+      });
+
+      const summaryText = summaryContent.join('\n');
+      await navigator.clipboard.writeText(summaryText);
+      toast.success(`${memberName}'s work summary copied to clipboard!`);
+    } catch (error) {
+      toast.error('Failed to copy work summary');
+      console.error('Copy failed:', error);
+    }
   };
 
   // Early return for auth states to prevent hooks ordering issues
@@ -336,14 +541,6 @@ export default function MyTeamPage() {
 
                 {/* Main Analytics Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <div className="bg-white border border-black">
-                    <div className="border-b border-gray-200 p-4">
-                      <h3 className="text-base font-medium text-black">Progress Tracking</h3>
-                    </div>
-                    <div className="p-4">
-                      <BurndownChart teamData={teamData} />
-                    </div>
-                  </div>
                   
                   <div className="bg-white border border-black">
                     <div className="border-b border-gray-200 p-4">
@@ -468,7 +665,10 @@ export default function MyTeamPage() {
                     <div key={memberInfo.userId} className={`${index > 0 ? 'border-t border-gray-200' : ''}`}>
                       <div 
                         className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
-                        onClick={() => toggleMemberCollapse(memberInfo.userId)}
+                        onClick={() => {
+                          toggleMemberCollapse(memberInfo.userId);
+                          initializeMemberTableState(memberInfo.userId);
+                        }}
                       >
                         <div className="flex items-center gap-4">
                           <img 
@@ -544,6 +744,256 @@ export default function MyTeamPage() {
                         <div className="bg-gray-50 border-t border-gray-200">
                           <div className="p-6 space-y-6">
                             <WorkCalendar allJiras={jiras} />
+                            
+                            {/* Table View Toggle */}
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-lg font-medium text-gray-900">Tasks Overview</h4>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    const currentState = memberTableStates[memberInfo.userId]?.showTableView || false;
+                                    updateMemberTableState(memberInfo.userId, { showTableView: !currentState });
+                                    if (!currentState && !memberExternalStatuses[memberInfo.userId]) {
+                                      fetchMemberExternalStatuses(memberInfo.userId, jiras);
+                                    }
+                                  }}
+                                >
+                                  <FontAwesomeIcon icon={faTable} className="text-xs mr-2" />
+                                  {memberTableStates[memberInfo.userId]?.showTableView ? 'Hide Table' : 'Show Table'}
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Table View */}
+                            {memberTableStates[memberInfo.userId]?.showTableView && (
+                              <div className="space-y-4">
+                                {/* Filters */}
+                                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <div className="flex gap-3">
+                                      {/* Search */}
+                                      <div className="flex-1 relative">
+                                        <Input
+                                          size="sm"
+                                          placeholder="Search tasks..."
+                                          value={memberTableStates[memberInfo.userId]?.searchQuery || ''}
+                                          onChange={(e) => updateMemberTableState(memberInfo.userId, { searchQuery: e.target.value })}
+                                          className="pl-8"
+                                        />
+                                        <FontAwesomeIcon icon={faSearch} className="absolute left-2.5 top-2.5 text-gray-400 text-xs" />
+                                      </div>
+
+                                      {/* Status Filter */}
+                                      <Select
+                                        size="sm"
+                                        value={memberTableStates[memberInfo.userId]?.statusFilter || 'all'}
+                                        onChange={(e) => updateMemberTableState(memberInfo.userId, { statusFilter: e.target.value })}
+                                        options={[
+                                          { value: 'all', label: 'All Status' },
+                                          { value: 'active', label: 'In Progress' },
+                                          { value: 'done', label: 'Done' }
+                                        ]}
+                                      />
+
+                                      {/* Date Filter */}
+                                      <Select
+                                        size="sm"
+                                        value={memberTableStates[memberInfo.userId]?.dateFilter || 'thisMonth'}
+                                        onChange={(e) => updateMemberTableState(memberInfo.userId, { dateFilter: e.target.value })}
+                                        options={[
+                                          { value: 'all', label: 'All Time' },
+                                          { value: 'today', label: 'Today' },
+                                          { value: 'thisWeek', label: 'This Week' },
+                                          { value: 'thisMonth', label: 'This Month' }
+                                        ]}
+                                      />
+                                    </div>
+
+                                    {/* Copy Button */}
+                                    <div className="flex items-center justify-end">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleCopyMemberSummary(memberInfo.userId, memberInfo.username, jiras)}
+                                        title={`Copy ${memberInfo.username}'s work summary`}
+                                      >
+                                        <FontAwesomeIcon icon={faCopy} className="text-xs mr-2" />
+                                        Copy Summary
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Table */}
+                                {(() => {
+                                  const filteredJiras = filterMemberJiras(jiras, memberInfo.userId);
+                                  const state = memberTableStates[memberInfo.userId] || {};
+                                  
+                                  return (
+                                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                                      <div className="overflow-x-auto">
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                          <thead className="bg-gray-50">
+                                            <tr>
+                                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
+                                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jira Number</th>
+                                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jira Status</th>
+                                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actual Status</th>
+                                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Hours</th>
+                                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Daily Log</th>
+                                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deploy Date</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="bg-white divide-y divide-gray-200">
+                                            {filteredJiras.length > 0 ? filteredJiras.map((jira, jiraIndex) => {
+                                              const filteredLogs = jira.dailyLogs ? jira.dailyLogs.filter(log => 
+                                                isDateInRange(log.logDate, state.dateFilter || 'thisMonth')
+                                              ) : [];
+                                              
+                                              const sortedLogs = filteredLogs.sort((a, b) => new Date(a.logDate) - new Date(b.logDate));
+                                              const totalHours = sortedLogs.reduce((sum, log) => sum + parseFloat(log.timeSpent || 0), 0);
+                                              
+                                              const deploymentDates = [
+                                                { env: 'SIT', date: jira.deploySitDate, color: 'bg-blue-50 text-blue-700' },
+                                                { env: 'UAT', date: jira.deployUatDate, color: 'bg-yellow-50 text-yellow-700' },
+                                                { env: 'PREPROD', date: jira.deployPreprodDate, color: 'bg-orange-50 text-orange-700' },
+                                                { env: 'PROD', date: jira.deployProdDate, color: 'bg-green-50 text-green-700' }
+                                              ].filter(deploy => deploy.date);
+
+                                              const getStatusColor = (status) => {
+                                                const s = status?.toLowerCase() || '';
+                                                if (s === 'done') return 'bg-green-100 text-green-800';
+                                                if (s === 'in progress') return 'bg-blue-100 text-blue-800';
+                                                if (s === 'cancel' || s === 'cancelled') return 'bg-gray-100 text-gray-800';
+                                                return 'bg-gray-100 text-gray-800';
+                                              };
+
+                                              return (
+                                                <tr key={jira._id || jiraIndex} className="hover:bg-gray-50">
+                                                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {jira.projectName || '-'}
+                                                  </td>
+                                                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {jira.serviceName || '-'}
+                                                  </td>
+                                                  <td className="px-4 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
+                                                    {jira.jiraNumber}
+                                                  </td>
+                                                  <td className="px-4 py-4 text-sm text-gray-900 max-w-sm">
+                                                    <div className="break-words">
+                                                      {jira.description}
+                                                    </div>
+                                                  </td>
+                                                  <td className="px-4 py-4 whitespace-nowrap text-sm">
+                                                    <span className="px-2 py-1 bg-gray-900 text-white rounded text-xs">
+                                                      {memberExternalStatuses[memberInfo.userId]?.[jira.jiraNumber] || 'Unknown'}
+                                                    </span>
+                                                  </td>
+                                                  <td className="px-4 py-4 whitespace-nowrap text-sm">
+                                                    <span className={`px-2 py-1 rounded text-xs ${getStatusColor(jira.actualStatus)}`}>
+                                                      {jira.actualStatus || 'No Status'}
+                                                    </span>
+                                                  </td>
+                                                  <td className="px-4 py-4 whitespace-nowrap text-center">
+                                                    <div className="flex flex-col items-center">
+                                                      <span className="text-lg font-bold text-blue-900">
+                                                        {totalHours}h
+                                                      </span>
+                                                      <span className="text-xs text-gray-500">
+                                                        {sortedLogs.length} log{sortedLogs.length !== 1 ? 's' : ''}
+                                                      </span>
+                                                    </div>
+                                                  </td>
+                                                  <td className="px-4 py-4 text-sm text-gray-500 max-w-lg">
+                                                    {sortedLogs.length > 0 ? (
+                                                      <div className="space-y-1">
+
+                                                        {(() => {
+                                                          const isExpanded = expandedDailyLogs[jira._id];
+                                                          const logsToShow = isExpanded ? sortedLogs : sortedLogs.slice(-5); // Show last 5 (most recent)
+                                                          const hasMoreLogs = sortedLogs.length > 5;
+                                                          
+                                                          return (
+                                                            <>
+                                                              {logsToShow.map((log, logIndex) => (
+                                                                <div key={logIndex} className="flex flex-col py-1 border-b border-gray-100 last:border-b-0">
+                                                                  <div className="flex items-center justify-between">
+                                                                    <span className="text-xs font-medium text-gray-600">
+                                                                      {new Date(log.logDate).toLocaleDateString('en-GB')}
+                                                                    </span>
+                                                                    <span className="text-xs font-semibold text-blue-600">
+                                                                      {log.timeSpent}h
+                                                                    </span>
+                                                                  </div>
+                                                                  <div className="text-xs text-gray-700 mt-1 break-words">
+                                                                    {log.taskDescription}
+                                                                  </div>
+                                                                </div>
+                                                              ))}
+                                                              
+                                                              {hasMoreLogs && (
+                                                                <button
+                                                                  onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    toggleDailyLogExpansion(jira._id);
+                                                                  }}
+                                                                  className="w-full mt-2 px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded-md text-gray-600 font-medium transition-colors"
+                                                                >
+                                                                  {isExpanded 
+                                                                    ? 'Show Less' 
+                                                                    : `Show ${sortedLogs.length - 5} More Logs`
+                                                                  }
+                                                                </button>
+                                                              )}
+                                                            </>
+                                                          );
+                                                        })()}
+                                                      </div>
+                                                    ) : (
+                                                      <span className="text-gray-400 text-xs">No daily logs</span>
+                                                    )}
+                                                  </td>
+                                                  <td className="px-4 py-4 text-sm max-w-xs">
+                                                    {deploymentDates.length > 0 ? (
+                                                      <div className="space-y-1">
+                                                        {deploymentDates.map((deploy, deployIndex) => (
+                                                          <div key={deployIndex} className={`px-2 py-1 rounded text-xs ${deploy.color} flex items-center justify-between`}>
+                                                            <span className="font-medium">{deploy.env}</span>
+                                                            <span>{new Date(deploy.date).toLocaleDateString('en-GB')}</span>
+                                                          </div>
+                                                        ))}
+                                                      </div>
+                                                    ) : (
+                                                      <span className="text-gray-400 text-xs">No deployment dates</span>
+                                                    )}
+                                                  </td>
+                                                </tr>
+                                              );
+                                            }) : (
+                                              <tr>
+                                                <td colSpan="9" className="px-4 py-8 text-center text-gray-500">
+                                                  No tasks found matching the current filters.
+                                                </td>
+                                              </tr>
+                                            )}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                      {filteredJiras.length > 0 && (
+                                        <div className="px-4 py-3 bg-gray-50 text-sm text-gray-500 text-center">
+                                          Showing {filteredJiras.length} of {jiras.length} tasks
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                            
                             <MyJiras userEmail={memberInfo.email} userName={memberInfo.username} readOnly={true} />
                           </div>
                         </div>

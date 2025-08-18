@@ -14,6 +14,7 @@ import { Button, Input } from '@/components/ui';
 
 const JiraItem = ({ 
   jira, 
+  dateRange,
   onAddLog,
   onEditJira,
   onDeleteJira,
@@ -38,17 +39,53 @@ const JiraItem = ({
   const [quickLogDescription, setQuickLogDescription] = useState('');
   const [quickLogHours, setQuickLogHours] = useState('');
 
+  // Date filtering function
+  const isDateInRange = (logDate, range) => {
+    if (range === 'all') return true;
+    
+    const targetDate = new Date(logDate);
+    const now = new Date();
+    
+    switch (range) {
+      case 'today':
+        return targetDate.toDateString() === now.toDateString();
+      case 'thisWeek':
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay());
+        weekStart.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        weekEnd.setHours(23, 59, 59, 999);
+        return targetDate >= weekStart && targetDate <= weekEnd;
+      case 'thisMonth':
+        return targetDate.getMonth() === now.getMonth() && 
+               targetDate.getFullYear() === now.getFullYear();
+      default:
+        return true;
+    }
+  };
+
   useEffect(() => {
-    const jiraSum = jira.dailyLogs.reduce((sum, log) => sum + parseFloat(log.timeSpent || 0), 0);
+    // Calculate total hours for filtered logs only
+    const filteredLogs = jira.dailyLogs.filter(log => 
+      isDateInRange(log.logDate, dateRange || 'thisMonth')
+    );
+    const jiraSum = filteredLogs.reduce((sum, log) => sum + parseFloat(log.timeSpent || 0), 0);
     setJiraTotalHours(jiraSum);
-  }, [jira.dailyLogs]);
+  }, [jira.dailyLogs, dateRange]);
 
   const sortedDailyLogs = useMemo(() => {
     if (!jira.dailyLogs || jira.dailyLogs.length === 0) {
       return [];
     }
-    return [...jira.dailyLogs].sort((a, b) => new Date(b.logDate) - new Date(a.logDate));
-  }, [jira.dailyLogs]);
+    
+    // Filter logs by date range first
+    const filteredLogs = jira.dailyLogs.filter(log => 
+      isDateInRange(log.logDate, dateRange || 'thisMonth')
+    );
+    
+    return filteredLogs.sort((a, b) => new Date(b.logDate) - new Date(a.logDate));
+  }, [jira.dailyLogs, dateRange]);
 
   const recentLogs = sortedDailyLogs.slice(0, 3);
   const hasMoreLogs = sortedDailyLogs.length > 3;

@@ -8,7 +8,6 @@ import {
   faSpinner, 
   faSync,
   faPlus,
-  faExternalLinkAlt,
   faExclamationTriangle,
   faClock,
   faChevronDown,
@@ -54,6 +53,7 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
   const [showAll, setShowAll] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [syncStats, setSyncStats] = useState({ new: 0, existing: 0 });
+  const [showSyncConfirm, setShowSyncConfirm] = useState(false);
 
   const fetchJiras = async () => {
     setLoading(true);
@@ -99,17 +99,23 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
     }
   }, [status, session, userEmail]);
 
+  // Show sync confirmation modal
+  const handleSyncClick = () => {
+    if (untrackedCount === 0) {
+      toast.info('No untracked JIRAs to track');
+      return;
+    }
+    setShowSyncConfirm(true);
+  };
+
   // Auto-sync untracked JIRAs
   const syncUntracked = async () => {
+    setShowSyncConfirm(false);
+    
     const untrackedIssues = issues.filter(issue => 
       !internalJiraNumbers.has(issue.key) && 
       !['done', 'closed', 'cancel'].includes(issue.fields.status?.name?.toLowerCase())
     );
-
-    if (untrackedIssues.length === 0) {
-      toast.info('No untracked JIRAs to sync');
-      return;
-    }
 
     setSyncing(true);
     let successCount = 0;
@@ -152,11 +158,12 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
   };
 
   // Group and sort issues by status
-  const { groupedIssues, activeIssues, completedIssues, untrackedCount, completedGroups } = useMemo(() => {
+  const { groupedIssues, activeIssues, completedIssues, untrackedCount, completedGroups, untrackedIssues } = useMemo(() => {
     const active = [];
     const completed = [];
     const statusGroups = {};
     const completedStatusGroups = {};
+    const untrackedGroup = [];
     let untracked = 0;
 
     // Define completed statuses
@@ -172,6 +179,7 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
       
       if (!isTracked && !isCompleted) {
         untracked++;
+        untrackedGroup.push(issue);
       }
 
       // Group by original status name
@@ -183,11 +191,13 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
         completedStatusGroups[originalStatusName].push(issue);
         completed.push(issue);
       } else {
-        // Active statuses
-        if (!statusGroups[originalStatusName]) {
-          statusGroups[originalStatusName] = [];
+        // Active statuses - exclude untracked items (they're shown separately)
+        if (isTracked) {
+          if (!statusGroups[originalStatusName]) {
+            statusGroups[originalStatusName] = [];
+          }
+          statusGroups[originalStatusName].push(issue);
         }
-        statusGroups[originalStatusName].push(issue);
         active.push(issue);
       }
     });
@@ -227,12 +237,16 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
 
     completed.sort((a, b) => new Date(b.fields.updated) - new Date(a.fields.updated));
 
+    // Sort untracked items by updated date (newest first)
+    untrackedGroup.sort((a, b) => new Date(b.fields.updated) - new Date(a.fields.updated));
+
     return { 
       groupedIssues: sortedStatusGroups, 
       activeIssues: active, 
       completedIssues: completed, 
       untrackedCount: untracked,
-      completedGroups: sortedCompletedGroups
+      completedGroups: sortedCompletedGroups,
+      untrackedIssues: untrackedGroup
     };
   }, [issues, internalJiraNumbers]);
 
@@ -294,7 +308,7 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
         </a>
       </td>
       <td className="p-3 text-sm text-black">
-        <div className="truncate whitespace-nowrap" title={issue.fields.summary}>
+        <div className="break-words" title={issue.fields.summary}>
           {issue.fields.summary}
         </div>
       </td>
@@ -321,27 +335,26 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
 
   const CompletedIssueRow = ({ issue, isTracked }) => (
     <tr className="hover:bg-gray-100 transition-colors opacity-75">
-      <td className="px-4 py-3 whitespace-nowrap">
+      <td className="p-3 w-32">
         <a
           href={`https://${process.env.JIRA_DOMAIN}/browse/${issue.key}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-mono text-sm text-gray-600 hover:underline flex items-center gap-1"
+          className="font-mono text-sm text-gray-600 hover:underline whitespace-nowrap"
         >
           {issue.key}
-          <FontAwesomeIcon icon={faExternalLinkAlt} className="text-xs" />
         </a>
       </td>
-      <td className="px-4 py-3 text-sm text-gray-700">
-        <div className={readOnly ? "" : "max-w-xs truncate"} title={issue.fields.summary}>
+      <td className="p-3 text-sm text-gray-700">
+        <div className="break-words leading-relaxed" title={issue.fields.summary}>
           {issue.fields.summary}
         </div>
       </td>
-      <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">
+      <td className="p-3 w-20 text-xs text-gray-500 whitespace-nowrap">
         {formatDate(issue.fields.updated)}
       </td>
       {!readOnly && (
-        <td className="px-4 py-3 whitespace-nowrap text-center">
+        <td className="p-3 w-20 text-center">
           {isTracked ? (
             <FontAwesomeIcon icon={faCheckSquare} className="text-green-500" />
           ) : (
@@ -390,11 +403,11 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
                 </button>
                 {untrackedCount > 0 && (
                   <button
-                    onClick={syncUntracked}
+                    onClick={handleSyncClick}
                     disabled={syncing}
                     className="px-3 py-1 bg-black text-white text-sm rounded hover:bg-gray-800 transition-colors disabled:opacity-50"
                   >
-                    {syncing ? 'Syncing...' : `Sync ${untrackedCount}`}
+                    {syncing ? 'Tracking...' : `Track ${untrackedCount} JIRAs`}
                   </button>
                 )}
               </>
@@ -402,6 +415,75 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
           </div>
         </div>
       </div>
+
+      {/* Untracked Issues - Priority Section */}
+      {untrackedIssues.length > 0 && (
+        <div className="border-b border-gray-200">
+          <div className="bg-gray-100 border-b border-gray-200 p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-black">
+                Untracked 
+              </span>
+              <span className="text-xs text-gray-600">
+                Click + to add to tracking
+              </span>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-32">JIRA</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Summary</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24">Status</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-20">Created</th>
+                  {!readOnly && (
+                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase w-20">Tracked</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {untrackedIssues.map(issue => (
+                  <tr key={issue.key} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-3 w-32">
+                      <a
+                        href={`https://${process.env.JIRA_DOMAIN}/browse/${issue.key}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-sm text-blue-600 hover:underline whitespace-nowrap"
+                      >
+                        {issue.key}
+                      </a>
+                    </td>
+                    <td className="p-3 text-sm text-black">
+                      <div className="break-words leading-relaxed" title={issue.fields.summary}>
+                        {issue.fields.summary}
+                      </div>
+                    </td>
+                    <td className="p-3 w-24 text-xs text-gray-600 whitespace-nowrap">
+                      {issue.fields.status?.name || 'No Status'}
+                    </td>
+                    <td className="p-3 w-20 text-xs text-gray-600 whitespace-nowrap">
+                      {formatDate(issue.fields.created)}
+                    </td>
+                    {!readOnly && (
+                      <td className="p-3 w-20 text-center">
+                        <button
+                          onClick={() => quickAddJira(issue)}
+                          className="text-black hover:text-gray-600 transition-colors p-1"
+                          title="Add to tracking"
+                        >
+                          <FontAwesomeIcon icon={faPlus} className="w-4 h-4" />
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Active Issues */}
       {groupedIssues.length > 0 && (
@@ -464,11 +546,11 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
                   <table className="min-w-full">
                     <thead>
                       <tr className="border-b border-gray-200">
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-32">JIRA</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Summary</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24">Updated</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-32">JIRA</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Summary</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-20">Updated</th>
                         {!readOnly && (
-                          <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase w-20">Tracked</th>
+                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase w-20">Tracked</th>
                         )}
                       </tr>
                     </thead>
@@ -493,6 +575,35 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
       {issues.length === 0 && (
         <div className="p-8 text-center text-gray-500">
           No JIRAs assigned to you
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showSyncConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-medium text-black mb-4">
+              Track Multiple JIRAs
+            </h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to track {untrackedCount} JIRAs? This will add them to your tracking system with "In Progress" status.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowSyncConfirm(false)}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={syncUntracked}
+                disabled={syncing}
+                className="px-4 py-2 bg-black text-white text-sm rounded hover:bg-gray-800 transition-colors disabled:opacity-50"
+              >
+                {syncing ? 'Tracking...' : `Track ${untrackedCount} JIRAs`}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -264,9 +264,9 @@ export const useTeamStats = (members = []) => {
       return totalHours / data.length;
     },
     
-    utilizationRate: (data) => {
+    utilizationRate: (data, workingDaysInMonth = 22) => {
       if (data.length === 0) return 0;
-      const capacity = data.length * 22 * 8; // Assuming 22 working days, 8 hours each
+      const capacity = data.length * workingDaysInMonth * 8; // Use actual working days
       const totalHours = data.reduce((total, member) => {
         return total + parseFloat(member.totalHours || 0);
       }, 0);

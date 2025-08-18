@@ -5,13 +5,10 @@ import {
   DashboardStats, 
   RecentActivity, 
   ProductivityInsights,
-  TimeTrackingCharts,
-  ProjectTimeline,
-  BurndownChart,
-  WorkloadBalance,
-  MonthlySummary
+  TaskTimeline,
+  HolidaysDisplay
 } from '@/components/dashboard';
-import { MyJiras, TaskDistribution } from '@/components/jira';
+import { MyJiras } from '@/components/jira';
 import { WeeklyProgress } from '@/components/calendar';
 import { PageHeader } from '@/components/ui';
 
@@ -22,7 +19,6 @@ import { useRouter } from 'next/navigation';
 export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const userEmail = session?.user?.email;
 
   const { allJiras, isLoading: isInitialLoading, error: fetchError } = useJiras();
   const [isCrudLoading, setIsCrudLoading] = useState(false);
@@ -44,9 +40,10 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto">
+
         {/* Header */}
         <div className="bg-white border-b border-gray-200">
-          <div className="mx-auto px-6 py-8">
+          <div className="px-6 py-6">
             <PageHeader title="DASHBOARD" />
           </div>
         </div>
@@ -56,30 +53,31 @@ export default function Home() {
           <DashboardStats allJiras={allJiras} />
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 p-4">
-          {/* Left Column - Primary Content (2 columns width) */}
-          <div className="lg:col-span-2 space-y-4">
-            <WeeklyProgress allJiras={allJiras} />
-            <NeedAction allJiras={allJiras} />
-            <MyJiras userEmail={session.user.email} />
+        {/* Main Content with gap */}
+        <div className="p-4 ">
+          
+          {/* Top Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            <div className="col-span-2 h-full"><NeedAction allJiras={allJiras} /></div>
+            <div className="h-full"><WeeklyProgress allJiras={allJiras} /></div>
+            <div className="h-full"><ProductivityInsights allJiras={allJiras} /></div>
+            <div className="h-full"><HolidaysDisplay /></div>
+
           </div>
 
-          {/* Middle Column - Analytics (2 columns width) */}
-          <div className="lg:col-span-2 space-y-4">
-            <TimeTrackingCharts allJiras={allJiras} />
-            <BurndownChart allJiras={allJiras} />
-            <ProjectTimeline allJiras={allJiras} />
+          {/* Middle Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            <div className="h-full col-span-2"><MyJiras userEmail={session.user.email} /></div>
+            <div className="h-full col-span-2"><TaskTimeline allJiras={allJiras} /></div>
+            <div className="h-full"><RecentActivity allJiras={allJiras} /></div>
+
           </div>
 
-          {/* Right Column - Insights (1 column width) */}
-          <div className="lg:col-span-1 space-y-4">
-            <ProductivityInsights allJiras={allJiras} />
-            <MonthlySummary allJiras={allJiras} />
-            <WorkloadBalance allJiras={allJiras} />
-            <TaskDistribution allJiras={allJiras} />
-            <RecentActivity allJiras={allJiras} />
+          {/* Bottom Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+
           </div>
+
         </div>
 
       </div>

@@ -80,15 +80,19 @@ const useFilter = (data = [], filterConfig = {}) => {
 
     // Apply other filters
     Object.entries(activeFilters).forEach(([key, value]) => {
+      console.log(`Applying filter: ${key} = ${value}`);
       if (value === null || value === undefined || value === '' || value === 'all') {
+        console.log(`Skipping filter ${key} because value is empty/all`);
         return; // Skip empty filters
       }
 
       const filterFn = filterConfig[key];
       
       if (typeof filterFn === 'function') {
+        console.log(`Using custom filter function for ${key}`);
         filtered = filtered.filter(item => filterFn(item, value));
       } else {
+        console.log(`Using default filter for ${key}`);
         // Default filter behavior
         filtered = filtered.filter(item => {
           const itemValue = getNestedValue(item, key);
@@ -186,23 +190,47 @@ export const useJiraFilter = (jiras = []) => {
     },
     
     dateRange: (jira, range) => {
-      const dueDate = new Date(jira.dueDate);
       const now = new Date();
       
-      switch (range) {
-        case 'overdue':
-          return dueDate < now;
-        case 'thisWeek':
-          const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
-          const weekEnd = new Date(weekStart);
-          weekEnd.setDate(weekEnd.getDate() + 6);
-          return dueDate >= weekStart && dueDate <= weekEnd;
-        case 'thisMonth':
-          return dueDate.getMonth() === now.getMonth() && 
-                 dueDate.getFullYear() === now.getFullYear();
-        default:
-          return true;
+      if (range === 'all') return true;
+      
+      // Check both dueDate and dailyLogs dates for filtering
+      const hasValidDate = (date, range) => {
+        if (!date) return false;
+        const targetDate = new Date(date);
+        
+        switch (range) {
+          case 'today':
+            return targetDate.toDateString() === now.toDateString();
+          case 'thisWeek':
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay());
+            weekStart.setHours(0, 0, 0, 0);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            weekEnd.setHours(23, 59, 59, 999);
+            return targetDate >= weekStart && targetDate <= weekEnd;
+          case 'thisMonth':
+            return targetDate.getMonth() === now.getMonth() && 
+                   targetDate.getFullYear() === now.getFullYear();
+          case 'overdue':
+            return targetDate < now;
+          default:
+            return true;
+        }
+      };
+      
+      // For date range filtering, only show JIRAs that have logs within the selected date range
+      // Don't show JIRAs that don't have any logs in the selected range
+      if (jira.dailyLogs && jira.dailyLogs.length > 0) {
+        const hasLogsInRange = jira.dailyLogs.some(log => hasValidDate(log.logDate, range));
+        console.log(`JIRA ${jira.jiraNumber}: has ${jira.dailyLogs.length} logs, has logs in ${range}:`, hasLogsInRange);
+        return hasLogsInRange;
       }
+      
+      // Don't show JIRAs without any daily logs when filtering by date range
+      console.log(`JIRA ${jira.jiraNumber}: no daily logs, filtering out`);
+      return false;
     },
     
     searchFields: ['jiraNumber', 'description', 'projectName', 'serviceName', 'assignedTo']

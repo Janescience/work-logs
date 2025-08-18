@@ -4,46 +4,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronLeft, faChevronRight, faCopy, faCheck } from '@fortawesome/free-solid-svg-icons';
-
-function useHolidays(year) {
-    const [holidays, setHolidays] = useState(new Set());
-    const [loading, setLoading] = useState(true);
-    const [holidayDetails, setHolidayDetails] = useState(new Map());
-
-    useEffect(() => {
-        if (!year) return;
-        setLoading(true);
-        fetch(`/api/holidays?year=${year}`)
-            .then(res => {
-                if (!res.ok) {
-                    console.error('Failed to fetch holidays, status:', res.status);
-                    return { holidays: [] };
-                }
-                return res.json();
-            })
-            .then(data => {
-                if (data.holidays) {
-                    const holidaySet = new Set();
-                    const detailsMap = new Map();
-                    
-                    data.holidays.forEach(h => {
-                        // Format date consistently as YYYY-MM-DD
-                        const date = new Date(h.date);
-                        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                        holidaySet.add(dateStr);
-                        detailsMap.set(dateStr, h.name);
-                    });
-                    
-                    setHolidays(holidaySet);
-                    setHolidayDetails(detailsMap);
-                }
-            })
-            .catch(err => console.error("Failed to fetch holidays:", err))
-            .finally(() => setLoading(false));
-    }, [year]);
-
-    return { holidays, holidayDetails, isLoading: loading };
-}
+import { useHolidays } from '@/hooks/useHolidays';
 
 export default function WorkCalendar({ allJiras, onMonthChange }) {
     const [currentDate, setCurrentDate] = useState(new Date());

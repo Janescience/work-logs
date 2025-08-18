@@ -76,7 +76,7 @@ export async function GET(req) {
       date: holiday.Date,
       name: holiday.HolidayDescriptionThai,
       // เพิ่ม field อื่นๆ ถ้าต้องการ
-      nameEng: holiday.HolidayDescriptionEnglish || '',
+      nameEng: holiday.HolidayDescription || '',
       weekDay: holiday.WeekDay || ''
     }));
     
