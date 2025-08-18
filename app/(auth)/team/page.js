@@ -17,9 +17,8 @@ import { toast } from 'react-toastify';
 // Organized imports by category
 import { MyJiras } from '@/components/jira';
 import { WorkCalendar } from '@/components/calendar';
-import { TeamSummary, PerformanceAlerts } from '@/components/dashboard';
-import { TeamRetrospective, TeamTimeline } from '@/components/calendar';
-import { VelocityTracker } from '@/components/reports';
+import { TeamSummary } from '@/components/dashboard';
+import { TeamTimeline } from '@/components/calendar';
 import { PageHeader, Button, Input, Select } from '@/components/ui';
 
 const getAvatarUrl = (username) => {
@@ -41,7 +40,7 @@ export default function MyTeamPage() {
   const [loadingData, setLoadingData] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [collapsedMembers, setCollapsedMembers] = useState({});
-  const [activeTab, setActiveTab] = useState('overview'); // overview, timeline, members, analytics, table
+  const [activeTab, setActiveTab] = useState('overview'); // overview, timeline, members
   
   // Member table view states - object with userId as key
   const [memberTableStates, setMemberTableStates] = useState({});
@@ -484,16 +483,6 @@ export default function MyTeamPage() {
                 >
                   Members ({Object.keys(teamData).length})
                 </button>
-                <button
-                  onClick={() => setActiveTab('analytics')}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === 'analytics'
-                      ? 'border-black text-gray-900'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Analytics
-                </button>
               </nav>
             </div>
           )}
@@ -516,7 +505,6 @@ export default function MyTeamPage() {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 gap-6">
                   <TeamSummary teamData={teamData} />
-                  {/* <TeamRetrospective teamData={teamData} /> */}
                 </div>
               </div>
             )}
@@ -524,133 +512,6 @@ export default function MyTeamPage() {
             {/* Timeline Tab */}
             {activeTab === 'timeline' && (
               <TeamTimeline allJiras={getAllJirasForTimeline()} />
-            )}
-
-            {/* Analytics Tab */}
-            {activeTab === 'analytics' && (
-              <div className="space-y-4">
-                {/* Performance Overview */}
-                <div className="bg-white border border-black">
-                  <div className="border-b border-gray-200 p-4">
-                    <h2 className="text-lg font-light text-black">Performance Overview</h2>
-                  </div>
-                  <div className="p-4">
-                    <PerformanceAlerts teamData={teamData} />
-                  </div>
-                </div>
-
-                {/* Main Analytics Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  
-                  <div className="bg-white border border-black">
-                    <div className="border-b border-gray-200 p-4">
-                      <h3 className="text-base font-medium text-black">Team Velocity</h3>
-                    </div>
-                    <div className="p-4">
-                      <VelocityTracker teamData={teamData} />
-                    </div>
-                  </div>
-
-                  {/* Team Health Metrics */}
-                  <div className="bg-white border border-black">
-                    <div className="border-b border-gray-200 p-4">
-                      <h3 className="text-base font-medium text-black">Team Health</h3>
-                    </div>
-                    <div className="p-4">
-                      {(() => {
-                        const teamSize = Object.keys(teamData).length;
-                        const totalJiras = Object.values(teamData).reduce((sum, { jiras }) => sum + (jiras?.length || 0), 0);
-                        const blockedJiras = Object.values(teamData).reduce((sum, { jiras }) => 
-                          sum + (jiras?.filter(j => j.actualStatus?.toLowerCase().includes('blocked') || 
-                                              j.actualStatus?.toLowerCase().includes('impediment')).length || 0), 0);
-                        const avgTasksPerPerson = teamSize > 0 ? (totalJiras / teamSize).toFixed(1) : 0;
-                        const blockedPercentage = totalJiras > 0 ? ((blockedJiras / totalJiras) * 100).toFixed(0) : 0;
-                        
-                        return (
-                          <div className="space-y-3">
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="text-center p-2 border border-gray-200">
-                                <div className="text-lg font-light text-black">{teamSize}</div>
-                                <p className="text-xs text-gray-600">Team Members</p>
-                              </div>
-                              <div className="text-center p-2 border border-gray-200">
-                                <div className="text-lg font-light text-black">{avgTasksPerPerson}</div>
-                                <p className="text-xs text-gray-600">Tasks/Person</p>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center justify-between text-xs text-gray-600 pt-2 border-t border-gray-200">
-                              <div className={`flex items-center gap-1 px-2 py-1 ${
-                                blockedPercentage <= 5 ? 'bg-gray-600 text-white' :
-                                blockedPercentage <= 15 ? 'bg-gray-400 text-black' :
-                                'bg-black text-white'
-                              }`}>
-                                {blockedPercentage}% Blocked
-                              </div>
-                              <span>{totalJiras} total tasks</span>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Additional Insights */}
-                <div className="bg-white border border-black">
-                  <div className="border-b border-gray-200 p-4">
-                    <h3 className="text-base font-medium text-black">Weekly Summary</h3>
-                  </div>
-                  <div className="p-4">
-                    {(() => {
-                      const now = new Date();
-                      const weekStart = new Date(now);
-                      weekStart.setDate(now.getDate() - now.getDay());
-                      
-                      let thisWeekHours = 0;
-                      let thisWeekCompleted = 0;
-                      let highPriorityTasks = 0;
-                      
-                      Object.values(teamData).forEach(({ jiras }) => {
-                        if (!jiras) return;
-                        
-                        jiras.forEach(jira => {
-                          if (jira.priority === 'High' || jira.priority === 'Highest') {
-                            highPriorityTasks++;
-                          }
-                          
-                          if (jira.actualStatus?.toLowerCase() === 'done') {
-                            thisWeekCompleted++;
-                          }
-                          
-                          if (jira.dailyLogs) {
-                            thisWeekHours += jira.dailyLogs
-                              .filter(log => new Date(log.logDate) >= weekStart)
-                              .reduce((sum, log) => sum + (parseFloat(log.timeSpent) || 0), 0);
-                          }
-                        });
-                      });
-                      
-                      return (
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="text-center p-2 border border-gray-200">
-                            <div className="text-lg font-light text-black">{thisWeekHours.toFixed(0)}</div>
-                            <p className="text-xs text-gray-600">Hours This Week</p>
-                          </div>
-                          <div className="text-center p-2 border border-gray-200">
-                            <div className="text-lg font-light text-black">{thisWeekCompleted}</div>
-                            <p className="text-xs text-gray-600">Completed</p>
-                          </div>
-                          <div className="text-center p-2 border border-gray-200">
-                            <div className="text-lg font-light text-black">{highPriorityTasks}</div>
-                            <p className="text-xs text-gray-600">High Priority</p>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </div>
             )}
 
             {/* Members Tab */}

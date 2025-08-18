@@ -299,7 +299,7 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
     <tr className="hover:bg-gray-50 transition-colors">
       <td className="p-3 w-32">
         <a
-          href={`https://${process.env.JIRA_DOMAIN}/browse/${issue.key}`}
+          href={`https://${process.env.NEXT_PUBLIC_JIRA_DOMAIN}/browse/${issue.key}`}
           target="_blank"
           rel="noopener noreferrer"
           className="font-mono text-sm text-blue-600 hover:underline"

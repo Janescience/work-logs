@@ -10,6 +10,7 @@ import {
   faClock,
   faRocket
 } from '@fortawesome/free-solid-svg-icons';
+import DetailModal from '@/components/modals/DetailModal';
 
 const NeedAction = ({ allJiras }) => {
   const [deploymentSchedule, setDeploymentSchedule] = useState({
@@ -18,6 +19,7 @@ const NeedAction = ({ allJiras }) => {
     thisWeek: [],
     nextWeek: []
   });
+  const [modalData, setModalData] = useState({ isOpen: false, title: '', content: '' });
 
   useEffect(() => {
     const today = new Date();
@@ -115,6 +117,22 @@ const NeedAction = ({ allJiras }) => {
     }
   };
 
+  const handleIconClick = (deployment, type) => {
+    const title = type === 'env' 
+      ? `Environment Details - ${deployment.jiraNumber} (${deployment.stage})`
+      : `SQL Scripts - ${deployment.jiraNumber} (${deployment.stage})`;
+    
+    const content = type === 'env' 
+      ? deployment.envDetail || 'No environment details available'
+      : deployment.sqlDetail || 'No SQL scripts available';
+    
+    setModalData({
+      isOpen: true,
+      title,
+      content
+    });
+  };
+
   const DeploymentItem = ({ deployment, highlight = false }) => (
     <div className={`flex items-center justify-between p-3  border ${
       highlight ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200 hover:bg-gray-50'
@@ -141,10 +159,22 @@ const NeedAction = ({ allJiras }) => {
       <div className="flex items-center gap-3 ml-3">
         <div className="flex items-center gap-2">
           {deployment.envDetail && (
-            <FontAwesomeIcon icon={faServer} className="text-gray-400 text-sm" title="Has environment details" />
+            <button
+              onClick={() => handleIconClick(deployment, 'env')}
+              className="text-gray-400 hover:text-blue-600 text-sm transition-colors cursor-pointer"
+              title="View environment details"
+            >
+              <FontAwesomeIcon icon={faServer} />
+            </button>
           )}
           {deployment.sqlDetail && (
-            <FontAwesomeIcon icon={faDatabase} className="text-gray-400 text-sm" title="Has SQL scripts" />
+            <button
+              onClick={() => handleIconClick(deployment, 'sql')}
+              className="text-gray-400 hover:text-green-600 text-sm transition-colors cursor-pointer"
+              title="View SQL scripts"
+            >
+              <FontAwesomeIcon icon={faDatabase} />
+            </button>
           )}
         </div>
         
@@ -277,6 +307,14 @@ const NeedAction = ({ allJiras }) => {
           </div>
         </div>
       )}
+
+      {/* Detail Modal */}
+      <DetailModal
+        isOpen={modalData.isOpen}
+        onClose={() => setModalData({ isOpen: false, title: '', content: '' })}
+        title={modalData.title}
+        content={modalData.content}
+      />
     </div>
   );
 };

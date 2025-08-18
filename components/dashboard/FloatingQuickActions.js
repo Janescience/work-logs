@@ -6,7 +6,7 @@ import {
   faPlus, 
   faClock, 
   faRocket, 
-  faFileExport,
+  faCalendar,
   faChartBar,
   faCalendarCheck,
   faListCheck,
@@ -21,6 +21,7 @@ import { toast } from 'react-toastify';
 import { useSession } from 'next-auth/react';
 import { MyJiras, JiraFormModal } from '@/components/jira';
 import { DeploymentHistory } from '@/components/dashboard';
+import { CalendarModal } from '@/components/calendar';
 
 const FloatingQuickActions = () => {
   const router = useRouter();
@@ -37,9 +38,11 @@ const FloatingQuickActions = () => {
   const [showJiraFormModal, setShowJiraFormModal] = useState(false);
   const [showDeploymentHistory, setShowDeploymentHistory] = useState(false);
   const [showUpdateStatus, setShowUpdateStatus] = useState(false);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [selectedJiraForStatus, setSelectedJiraForStatus] = useState('');
   const [newStatus, setNewStatus] = useState('');
   const [allJiras, setAllJiras] = useState([]);
+  const [inProgressJiras, setInProgressJiras] = useState([]);
   // Don't show on login/register pages
   const hiddenPaths = ['/login', '/register'];
   if (hiddenPaths.includes(pathname)) return null;
@@ -49,8 +52,14 @@ const FloatingQuickActions = () => {
       fetch('/api/jiras')
         .then(res => res.json())
         .then(data => {
-          setAllJiras(data.jiras || []);
-          // ... existing code for activeJiras
+          const jiras = data.jiras || [];
+          setAllJiras(jiras);
+          
+          // Filter JIRAs with actual status = "In Progress" for Update Status modal
+          const progressJiras = jiras.filter(jira => 
+            jira.actualStatus?.toLowerCase() === 'in progress'
+          );
+          setInProgressJiras(progressJiras);
         });
     }
   }, [session]);
@@ -136,6 +145,20 @@ const FloatingQuickActions = () => {
     }
   };
 
+  // Handle task selection for status update - sync current status
+  const handleTaskSelection = (jiraId) => {
+    setSelectedJiraForStatus(jiraId);
+    
+    if (jiraId) {
+      const selectedJira = inProgressJiras.find(jira => jira._id === jiraId);
+      if (selectedJira) {
+        setNewStatus(selectedJira.actualStatus || '');
+      }
+    } else {
+      setNewStatus('');
+    }
+  };
+
   const handleUpdateStatus = async () => {
     if (!selectedJiraForStatus || !newStatus) {
       toast.warning('Please select a JIRA and enter status');
@@ -197,7 +220,7 @@ const FloatingQuickActions = () => {
       }
     },
     {
-      title: 'Update Status',
+      title: 'Update Work Done',
       icon: faEdit,
       onClick: () => {
         setShowUpdateStatus(true);
@@ -205,13 +228,10 @@ const FloatingQuickActions = () => {
       }
     },
     {
-      title: 'Export',
-      icon: faFileExport,
+      title: 'Month Summary',
+      icon: faCalendar,
       onClick: () => {
-        const startDate = new Date();
-        startDate.setDate(1);
-        const endDate = new Date();
-        window.location.href = `/api/export/excel?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
+        setShowCalendarModal(true);
         setIsExpanded(false);
       }
     },
@@ -435,7 +455,7 @@ const FloatingQuickActions = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white border-2 border-black shadow-xl w-full max-w-md">
             <div className="bg-black text-white px-6 py-4 flex items-center justify-between">
-              <h3 className="text-xl font-light">Update Status</h3>
+              <h3 className="text-xl font-light">Update Work Done</h3>
               <button
                 onClick={() => setShowUpdateStatus(false)}
                 className="hover:bg-gray-800 w-8 h-8 rounded flex items-center justify-center transition-colors"
@@ -451,14 +471,14 @@ const FloatingQuickActions = () => {
                 </label>
                 <select
                   value={selectedJiraForStatus}
-                  onChange={(e) => setSelectedJiraForStatus(e.target.value)}
+                  onChange={(e) => handleTaskSelection(e.target.value)}
                   className="w-full p-3 border border-gray-300 focus:border-black outline-none transition-colors bg-white text-black rounded-md"
                   disabled={isSubmitting}
                 >
                   <option value="">-- Select Task --</option>
-                  {allJiras.map(jira => (
+                  {inProgressJiras.map(jira => (
                     <option key={jira._id} value={jira._id}>
-                      {jira.jiraNumber} - {jira.description?.substring(0, 50)}...
+                      {jira.jiraNumber} - {jira.description?.substring(0, 50)}... (Current: {jira.actualStatus})
                     </option>
                   ))}
                 </select>
@@ -500,6 +520,15 @@ const FloatingQuickActions = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Calendar Modal */}
+      {showCalendarModal && (
+        <CalendarModal
+          isOpen={showCalendarModal}
+          onClose={() => setShowCalendarModal(false)}
+          allJiras={allJiras}
+        />
       )}
     </>
   );

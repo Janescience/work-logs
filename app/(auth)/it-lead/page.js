@@ -6,16 +6,13 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
-  faSpinner, faUser, faChartBar, faExclamationTriangle,
-  faTachometerAlt, faProjectDiagram, faUsers, faFileAlt,
-  faBell, faRocket
+  faSpinner, faProjectDiagram, faUsers, faChartBar
 } from '@fortawesome/free-solid-svg-icons';
 import { 
-  LoadingSpinner, ErrorMessage, PageHeader, StatCard, 
+  LoadingSpinner, ErrorMessage, PageHeader, 
   TabNavigation, SummaryTable, TeamGrid, Button, Select
 } from '@/components/ui';
-import { YearlySummaryChart, ResourceHeatmap, TrendAnalysis, QuickActions, AdvancedReportGenerator } from '@/components/reports';
-import { ITLeadAlerts } from '@/components/dashboard';
+import { YearlySummaryChart } from '@/components/reports';
 
 const ProjectSummaryTable = ({ data }) => {
     const columns = [
@@ -93,6 +90,196 @@ const IndividualSummary = ({ data }) => {
     );
 };
 
+const WorkDoneSummaryTable = ({ summaryData, selectedMonth, selectedYear }) => {
+    if (!summaryData || !summaryData.individualSummary) {
+        return (
+            <div className="bg-white border border-black">
+                <div className="border-b border-gray-200 p-4">
+                    <h2 className="text-lg font-light text-black">Work Done Summary</h2>
+                </div>
+                <div className="p-6 text-center text-gray-500">
+                    No data available for the selected period
+                </div>
+            </div>
+        );
+    }
+
+    // Process data to create summary by project
+    const projectSummary = {};
+    let totalHours = 0;
+
+    summaryData.individualSummary.forEach(member => {
+        member.projects?.forEach(project => {
+            const projectName = project.projectName || 'Others';
+            const hours = project.totalHours || 0;
+            
+            if (!projectSummary[projectName]) {
+                projectSummary[projectName] = 0;
+            }
+            projectSummary[projectName] += hours;
+            totalHours += hours;
+        });
+    });
+
+    // Convert to array and sort by hours (descending)
+    const sortedProjects = Object.entries(projectSummary)
+        .map(([name, hours]) => ({
+            name,
+            hours,
+            percentage: totalHours > 0 ? (hours / totalHours * 100) : 0
+        }))
+        .sort((a, b) => b.hours - a.hours);
+
+    // Group projects by category
+    const bauProjects = sortedProjects.filter(p => 
+        p.name.toLowerCase().includes('bau') || 
+        p.name.toLowerCase().includes('maintenance')
+    );
+    
+    const otherProjects = sortedProjects.filter(p => 
+        !p.name.toLowerCase().includes('bau') && 
+        !p.name.toLowerCase().includes('maintenance') &&
+        p.name !== 'Others'
+    );
+
+    const uncategorizedProjects = sortedProjects.filter(p => p.name === 'Others');
+
+    const monthName = new Date(0, selectedMonth - 1).toLocaleString('default', { month: 'long' });
+
+    return (
+        <div className="bg-white border border-black">
+            <div className="border-b border-gray-200 p-4">
+                <h2 className="text-lg font-light text-black">
+                    Work Done Summary - {monthName} {selectedYear}
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                    Total Hours: {totalHours.toFixed(1)} | Projects: {sortedProjects.length}
+                </p>
+            </div>
+            <div className="overflow-x-auto">
+                <table className="min-w-full">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Project / Task
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Hours
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                % of Month
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                % of Total
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {/* BAU Section */}
+                        {bauProjects.length > 0 && (
+                            <>
+                                <tr className="bg-gray-100">
+                                    <td colSpan="4" className="px-6 py-2 text-sm font-medium text-gray-700 uppercase">
+                                        BAU & Maintenance
+                                    </td>
+                                </tr>
+                                {bauProjects.map((project, index) => (
+                                    <tr key={`bau-${index}`} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 pl-8">
+                                            {project.name}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-900">
+                                            {project.hours.toFixed(1)}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-600">
+                                            {project.percentage.toFixed(2)}%
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-600">
+                                            {project.percentage.toFixed(2)}%
+                                        </td>
+                                    </tr>
+                                ))}
+                            </>
+                        )}
+
+                        {/* Other Projects Section */}
+                        {otherProjects.length > 0 && (
+                            <>
+                                <tr className="bg-gray-100">
+                                    <td colSpan="4" className="px-6 py-2 text-sm font-medium text-gray-700 uppercase">
+                                        Development Projects
+                                    </td>
+                                </tr>
+                                {otherProjects.map((project, index) => (
+                                    <tr key={`dev-${index}`} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 text-sm text-gray-900 pl-8">
+                                            <div className="break-words max-w-sm">
+                                                {project.name}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-900">
+                                            {project.hours.toFixed(1)}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-600">
+                                            {project.percentage.toFixed(2)}%
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-600">
+                                            {project.percentage.toFixed(2)}%
+                                        </td>
+                                    </tr>
+                                ))}
+                            </>
+                        )}
+
+                        {/* Uncategorized Section */}
+                        {uncategorizedProjects.length > 0 && (
+                            <>
+                                <tr className="bg-gray-100">
+                                    <td colSpan="4" className="px-6 py-2 text-sm font-medium text-gray-700 uppercase">
+                                        Others
+                                    </td>
+                                </tr>
+                                {uncategorizedProjects.map((project, index) => (
+                                    <tr key={`other-${index}`} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 pl-8">
+                                            {project.name}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-900">
+                                            {project.hours.toFixed(1)}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-600">
+                                            {project.percentage.toFixed(2)}%
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-600">
+                                            {project.percentage.toFixed(2)}%
+                                        </td>
+                                    </tr>
+                                ))}
+                            </>
+                        )}
+
+                        {/* Total Row */}
+                        <tr className="bg-black text-white font-medium">
+                            <td className="px-6 py-3 text-sm">
+                                TOTAL
+                            </td>
+                            <td className="px-6 py-3 text-sm text-right font-mono">
+                                {totalHours.toFixed(1)}
+                            </td>
+                            <td className="px-6 py-3 text-sm text-right font-mono">
+                                100.00%
+                            </td>
+                            <td className="px-6 py-3 text-sm text-right font-mono">
+                                100.00%
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
 // --- Main Page Component ---
 export default function ITLeadSummaryPage() {
     const { data: session, status } = useSession();
@@ -108,8 +295,7 @@ export default function ITLeadSummaryPage() {
         month: new Date().getMonth() + 1,
         year: new Date().getFullYear(),
     });
-    const [activeTab, setActiveTab] = useState('overview'); // overview, projects, teams, reports
-    const [showReportGenerator, setShowReportGenerator] = useState(false);
+    const [activeTab, setActiveTab] = useState('projects'); // projects, teams, summary
 
     useEffect(() => {
         if (status === 'authenticated') {
@@ -167,34 +353,6 @@ export default function ITLeadSummaryPage() {
         fetchMonthlyData(newDate.year, newDate.month);
     };
 
-    const handleQuickAction = (actionType, data) => {
-        switch (actionType) {
-            case 'refresh_data':
-                fetchMonthlyData(date.year, date.month);
-                fetchYearlyData(date.year);
-                break;
-            case 'report_generated':
-                console.log('Report generated:', data.type);
-                break;
-            case 'copied_to_clipboard':
-                console.log('Copied to clipboard');
-                break;
-            case 'schedule_meeting':
-                console.log('Opening calendar...');
-                break;
-            case 'send_notification':
-                console.log('Sending notification...');
-                break;
-            case 'share_dashboard':
-                console.log('Dashboard shared:', data.url);
-                break;
-            case 'open_advanced_reports':
-                setShowReportGenerator(true);
-                break;
-            default:
-                console.log('Action:', actionType, data);
-        }
-    };
 
     if (status === 'loading' || !summaryData && loading) {
         return (
@@ -241,11 +399,6 @@ export default function ITLeadSummaryPage() {
                         <TabNavigation
                             tabs={[
                                 {
-                                    id: 'overview',
-                                    label: 'Overview',
-                                    icon: <FontAwesomeIcon icon={faTachometerAlt} className="text-xs" />
-                                },
-                                {
                                     id: 'projects',
                                     label: 'Projects',
                                     icon: <FontAwesomeIcon icon={faProjectDiagram} className="text-xs" />
@@ -256,9 +409,9 @@ export default function ITLeadSummaryPage() {
                                     icon: <FontAwesomeIcon icon={faUsers} className="text-xs" />
                                 },
                                 {
-                                    id: 'reports',
-                                    label: 'Reports',
-                                    icon: <FontAwesomeIcon icon={faFileAlt} className="text-xs" />
+                                    id: 'summary',
+                                    label: 'Work Done Summary',
+                                    icon: <FontAwesomeIcon icon={faChartBar} className="text-xs" />
                                 }
                             ]}
                             activeTab={activeTab}
@@ -284,81 +437,6 @@ export default function ITLeadSummaryPage() {
                         </div>
                     ) : (
                         <>
-                            {/* Overview Tab */}
-                            {activeTab === 'overview' && (
-                                <div className="space-y-4">
-                                    {/* Key Metrics */}
-                                    <div className="bg-white border border-black">
-                                        <div className="border-b border-gray-200 p-4">
-                                            <h2 className="text-lg font-light text-black">Key Metrics</h2>
-                                        </div>
-                                        <div className="p-4">
-                                            {(() => {
-                                                if (!summaryData) return null;
-                                                
-                                                const totalHours = summaryData.individualSummary?.reduce((sum, item) => sum + item.totalHours, 0) || 0;
-                                                const totalTasks = summaryData.projectSummary?.reduce((sum, group) => 
-                                                    sum + group.projects.reduce((pSum, proj) => pSum + (proj.activeTasks || 0), 0), 0) || 0;
-                                                const totalProjects = summaryData.projectSummary?.reduce((sum, group) => sum + group.projects.length, 0) || 0;
-                                                const teamSize = summaryData.individualSummary?.length || 0;
-                                                
-                                                return (
-                                                    <div className="grid grid-cols-4 gap-4">
-                                                        <StatCard
-                                                            title="Total Hours"
-                                                            value={totalHours.toFixed(0)}
-                                                            icon={faChartBar}
-                                                            className="border border-gray-200"
-                                                        />
-                                                        <StatCard
-                                                            title="Active Tasks"
-                                                            value={totalTasks}
-                                                            icon={faExclamationTriangle}
-                                                            className="border border-gray-200"
-                                                        />
-                                                        <StatCard
-                                                            title="Projects"
-                                                            value={totalProjects}
-                                                            icon={faProjectDiagram}
-                                                            className="border border-gray-200"
-                                                        />
-                                                        <StatCard
-                                                            title="Team Members"
-                                                            value={teamSize}
-                                                            icon={faUsers}
-                                                            className="border border-gray-200"
-                                                        />
-                                                    </div>
-                                                );
-                                            })()}
-                                        </div>
-                                    </div>
-
-                                    {/* Alerts */}
-                                    <div className="bg-white border border-black">
-                                        <div className="border-b border-gray-200 p-4">
-                                            <h2 className="text-lg font-light text-black">Alerts & Notifications</h2>
-                                        </div>
-                                        <div className="p-4">
-                                            <ITLeadAlerts summaryData={summaryData} />
-                                        </div>
-                                    </div>
-
-                                    {/* Trend Analysis - Minimal */}
-                                    <div className="bg-white border border-black">
-                                        <div className="border-b border-gray-200 p-4">
-                                            <h3 className="text-base font-medium text-black">Performance Trends</h3>
-                                        </div>
-                                        <div className="p-4">
-                                            <TrendAnalysis 
-                                                yearlyData={yearlyData} 
-                                                currentMonthData={summaryData}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
                             {/* Projects Tab */}
                             {activeTab === 'projects' && (
                                 <div className="space-y-6">
@@ -565,90 +643,20 @@ export default function ITLeadSummaryPage() {
                                 </div>
                             )}
 
-                            {/* Reports Tab */}
-                            {activeTab === 'reports' && (
+                            {/* Work Done Summary Tab */}
+                            {activeTab === 'summary' && (
                                 <div className="space-y-6">
-                                    <QuickActions 
+                                    <WorkDoneSummaryTable 
                                         summaryData={summaryData} 
-                                        onAction={handleQuickAction}
+                                        selectedMonth={date.month}
+                                        selectedYear={date.year}
                                     />
-                                    <TrendAnalysis 
-                                        yearlyData={yearlyData} 
-                                        currentMonthData={summaryData}
-                                    />
-                                    <div className="bg-white rounded-lg border border-gray-200 p-6">
-                                        <h2 className="text-2xl font-light text-black mb-4 flex items-center">
-                                            <FontAwesomeIcon icon={faFileAlt} className="mr-3 text-gray-600" />
-                                            Executive Reports & Analytics
-                                        </h2>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                            <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
-                                                <h3 className="font-semibold text-black mb-2">Advanced Generator</h3>
-                                                <p className="text-sm text-gray-600 mb-3">Enterprise-level reports with multiple formats</p>
-                                                <Button 
-                                                    onClick={() => setShowReportGenerator(true)}
-                                                    className="w-full"
-                                                    size="sm"
-                                                >
-                                                    Open Generator
-                                                </Button>
-                                            </div>
-                                            <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
-                                                <h3 className="font-semibold text-black mb-2">Monthly Summary</h3>
-                                                <p className="text-sm text-gray-600 mb-3">Comprehensive monthly performance report</p>
-                                                <Button 
-                                                    onClick={() => handleQuickAction('report_generated', { type: 'monthly' })}
-                                                    variant="link"
-                                                    size="sm"
-                                                >
-                                                    Generate Report →
-                                                </Button>
-                                            </div>
-                                            <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
-                                                <h3 className="font-semibold text-black mb-2">Resource Utilization</h3>
-                                                <p className="text-sm text-gray-600 mb-3">Team capacity and workload analysis</p>
-                                                <Button 
-                                                    onClick={() => handleQuickAction('report_generated', { type: 'utilization' })}
-                                                    variant="link"
-                                                    size="sm"
-                                                >
-                                                    Generate Report →
-                                                </Button>
-                                            </div>
-                                            <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
-                                                <h3 className="font-semibold text-black mb-2">Project Portfolio</h3>
-                                                <p className="text-sm text-gray-600 mb-3">Complete project performance overview</p>
-                                                <Button 
-                                                    onClick={() => handleQuickAction('report_generated', { type: 'portfolio' })}
-                                                    variant="link"
-                                                    size="sm"
-                                                >
-                                                    Generate Report →
-                                                </Button>
-                                            </div>
-                                        </div>
-                                        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                                            <p className="text-sm text-blue-800">
-                                                <FontAwesomeIcon icon={faRocket} className="mr-2" />
-                                                Advanced reporting features now available! Use Quick Actions panel above for instant report generation.
-                                            </p>
-                                        </div>
-                                    </div>
                                 </div>
                             )}
                         </>
                     )}
                 </div>
             </div>
-            
-            {/* Advanced Report Generator Modal */}
-            {showReportGenerator && (
-                <AdvancedReportGenerator 
-                    summaryData={summaryData}
-                    yearlyData={yearlyData}
-                    onClose={() => setShowReportGenerator(false)}
-                />
-            )}
         </div>
     );
 }
