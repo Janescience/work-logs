@@ -91,7 +91,10 @@ const IndividualSummary = ({ data }) => {
 };
 
 const WorkDoneSummaryTable = ({ summaryData, selectedMonth, selectedYear }) => {
-    if (!summaryData || !summaryData.individualSummary) {
+    // Debug logging
+    console.log('WorkDoneSummaryTable - summaryData:', summaryData);
+    
+    if (!summaryData) {
         return (
             <div className="bg-white border border-black">
                 <div className="border-b border-gray-200 p-4">
@@ -99,6 +102,9 @@ const WorkDoneSummaryTable = ({ summaryData, selectedMonth, selectedYear }) => {
                 </div>
                 <div className="p-6 text-center text-gray-500">
                     No data available for the selected period
+                    <div className="text-xs text-gray-400 mt-2">
+                        summaryData is {summaryData ? 'available' : 'null/undefined'}
+                    </div>
                 </div>
             </div>
         );
@@ -108,18 +114,56 @@ const WorkDoneSummaryTable = ({ summaryData, selectedMonth, selectedYear }) => {
     const projectSummary = {};
     let totalHours = 0;
 
-    summaryData.individualSummary.forEach(member => {
-        member.projects?.forEach(project => {
-            const projectName = project.projectName || 'Others';
-            const hours = project.totalHours || 0;
+    // Try different data structure approaches
+    const dataToProcess = summaryData.individualSummary || summaryData.projectSummary || [];
+    console.log('dataToProcess:', dataToProcess);
+
+    if (summaryData.individualSummary) {
+        // Method 1: Process individualSummary
+        summaryData.individualSummary.forEach(member => {
+            console.log('Processing member:', member);
             
-            if (!projectSummary[projectName]) {
-                projectSummary[projectName] = 0;
+            // Check if member has totalHours directly
+            if (member.totalHours) {
+                const memberName = member.user?.username || member.user?.name || 'Unknown Member';
+                if (!projectSummary[memberName]) {
+                    projectSummary[memberName] = 0;
+                }
+                projectSummary[memberName] += member.totalHours;
+                totalHours += member.totalHours;
             }
-            projectSummary[projectName] += hours;
-            totalHours += hours;
+
+            // Check if member has projects
+            member.projects?.forEach(project => {
+                const projectName = project.projectName || project.name || 'Others';
+                const hours = project.totalHours || project.hours || 0;
+                
+                if (!projectSummary[projectName]) {
+                    projectSummary[projectName] = 0;
+                }
+                projectSummary[projectName] += hours;
+                totalHours += hours;
+            });
         });
-    });
+    } else if (summaryData.projectSummary) {
+        // Method 2: Process projectSummary
+        summaryData.projectSummary.forEach(group => {
+            console.log('Processing group:', group);
+            group.projects?.forEach(project => {
+                const projectName = project.name || 'Others';
+                const hours = project.totalHours || project.coreHours + project.nonCoreHours || 0;
+                
+                if (!projectSummary[projectName]) {
+                    projectSummary[projectName] = 0;
+                }
+                projectSummary[projectName] += hours;
+                totalHours += hours;
+            });
+        });
+    }
+
+    console.log('projectSummary:', projectSummary);
+    console.log('totalHours:', totalHours);
 
     // Convert to array and sort by hours (descending)
     const sortedProjects = Object.entries(projectSummary)
@@ -145,6 +189,34 @@ const WorkDoneSummaryTable = ({ summaryData, selectedMonth, selectedYear }) => {
     const uncategorizedProjects = sortedProjects.filter(p => p.name === 'Others');
 
     const monthName = new Date(0, selectedMonth - 1).toLocaleString('default', { month: 'long' });
+
+    // If no projects found, show debug info
+    if (sortedProjects.length === 0) {
+        return (
+            <div className="bg-white border border-black">
+                <div className="border-b border-gray-200 p-4">
+                    <h2 className="text-lg font-light text-black">
+                        Work Done Summary - {monthName} {selectedYear}
+                    </h2>
+                </div>
+                <div className="p-6 text-center text-gray-500">
+                    No projects found in the data
+                    <div className="text-xs text-gray-400 mt-4 text-left">
+                        <p><strong>Debug Info:</strong></p>
+                        <p>summaryData keys: {summaryData ? Object.keys(summaryData).join(', ') : 'N/A'}</p>
+                        {summaryData?.individualSummary && (
+                            <p>individualSummary length: {summaryData.individualSummary.length}</p>
+                        )}
+                        {summaryData?.projectSummary && (
+                            <p>projectSummary length: {summaryData.projectSummary.length}</p>
+                        )}
+                        <p>Total Hours: {totalHours}</p>
+                        <p>Project Summary: {JSON.stringify(projectSummary, null, 2)}</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="bg-white border border-black">
