@@ -13,3 +13,4 @@ export { default as TeamSummary } from './TeamSummary';
 // New Analytics Components
 export { default as TaskTimeline } from './TaskTimeline';
 export { default as HolidaysDisplay } from './HolidaysDisplay';
+export { default as LoggingTracker } from './LoggingTracker';

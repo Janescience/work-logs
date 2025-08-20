@@ -6,7 +6,8 @@ import {
   RecentActivity, 
   ProductivityInsights,
   TaskTimeline,
-  HolidaysDisplay
+  HolidaysDisplay,
+  LoggingTracker
 } from '@/components/dashboard';
 import { MyJiras } from '@/components/jira';
 import { WeeklyProgress } from '@/components/calendar';
@@ -75,7 +76,7 @@ export default function Home() {
 
           {/* Bottom Row */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-
+            <div className="h-full col-span-2"><LoggingTracker allJiras={allJiras} /></div>
           </div>
 
         </div>
