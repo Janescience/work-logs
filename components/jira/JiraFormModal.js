@@ -381,14 +381,20 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
                   )}
                 </div>
 
-                <div>
-                  <Input
-                    label="JIRA Status (Live)"
-                    {...getFieldProps('jiraStatus')}
-                    disabled={values.jiraType === 'My Jira' || isSubmitting} // Disable if auto-filled from DDL
-                    placeholder="Auto-filled from JIRA API"
-                  />
-                </div>
+                {/* JIRA Status - Show only when:
+                    1. New Task + My Jira selected, OR 
+                    2. Edit Task + has jiraStatus value */}
+                {((values.jiraType === 'My Jira' && !isEditMode) || 
+                  (isEditMode && values.jiraStatus)) && (
+                  <div>
+                    <Input
+                      label="JIRA Status (Live)"
+                      {...getFieldProps('jiraStatus')}
+                      disabled={values.jiraType === 'My Jira' || isSubmitting} // Disable if auto-filled from DDL
+                      placeholder="Auto-filled from JIRA API"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <Select
