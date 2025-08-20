@@ -82,27 +82,40 @@ const TaskTimeline = ({ allJiras }) => {
             progress = 90;
           }
         } else {
-          // For tasks without deployment dates, calculate based on actual status
+          // For tasks without deployment dates, calculate based on monthly progress
+          const now = new Date();
+          const currentMonth = now.getMonth();
+          const currentYear = now.getFullYear();
+          const currentDay = now.getDate();
+          
+          // Get last day of current month
+          const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+          
+          // Calculate progress as percentage of month completion
+          progress = Math.min(100, Math.round((currentDay / lastDayOfMonth) * 100));
+          
+          // Apply status-based adjustments to monthly progress
           const status = (jira.actualStatus || '').toLowerCase();
           switch (status) {
-            case 'in progress':
-            case 'develop':
-            case 'analysis':
-              progress = 30;
-              break;
-            case 'sit':
-              progress = 50;
-              break;
-            case 'uat':
-              progress = 70;
+            case 'done':
+              progress = 100;
               break;
             case 'awaiting production':
             case 'production':
-              progress = 90;
+              progress = Math.max(progress, 90); // At least 90%
               break;
-            default:
-              progress = 10; // Default for new tasks
+            case 'uat':
+              progress = Math.max(progress, 70); // At least 70%
               break;
+            case 'sit':
+              progress = Math.max(progress, 50); // At least 50%
+              break;
+            case 'in progress':
+            case 'develop':
+            case 'analysis':
+              progress = Math.max(progress, 30); // At least 30%
+              break;
+            // For other statuses, use monthly progress as-is
           }
         }
         

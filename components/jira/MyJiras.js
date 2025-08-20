@@ -54,6 +54,7 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
   const [showCompleted, setShowCompleted] = useState(false);
   const [syncStats, setSyncStats] = useState({ new: 0, existing: 0 });
   const [showSyncConfirm, setShowSyncConfirm] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   const fetchJiras = async () => {
     setLoading(true);
@@ -94,10 +95,11 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
   };
 
   useEffect(() => {
-    if (status === 'authenticated' && session?.user?.email) {
+    if (status === 'authenticated' && session?.user?.email && !hasInitialized) {
       fetchJiras();
+      setHasInitialized(true);
     }
-  }, [status, session, userEmail]);
+  }, [status, session?.user?.email, hasInitialized]); // Only fetch once when authenticated
 
   // Show sync confirmation modal
   const handleSyncClick = () => {
@@ -150,6 +152,7 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
     
     if (successCount > 0) {
       toast.success(`Synced ${successCount} JIRAs successfully!`);
+      setHasInitialized(false); // Allow refresh
       fetchJiras(); // Refresh data
     }
     if (errorCount > 0) {
@@ -395,9 +398,13 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
             {!readOnly && (
               <>
                 <button
-                  onClick={fetchJiras}
+                  onClick={() => {
+                    setHasInitialized(false); // Allow refresh
+                    fetchJiras();
+                  }}
                   className="text-sm text-gray-500 hover:text-black transition-colors"
                   disabled={loading}
+                  title="Refresh data"
                 >
                   <FontAwesomeIcon icon={faSync} className={loading ? 'animate-spin' : ''} />
                 </button>
