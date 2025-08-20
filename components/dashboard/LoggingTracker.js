@@ -123,6 +123,31 @@ const LoggingTracker = ({ allJiras }) => {
       day.status === 'high'
     );
 
+    // Generate performance assessment message based on monthly progress
+    const getAssessmentMessage = () => {
+      // Calculate expected progress based on working days passed
+      const expectedProgressRatio = workingDaysPassed / totalWorkingDays;
+      const actualVsExpected = performanceRatio / 100 / expectedProgressRatio;
+      
+      if (performanceRatio >= 120) {
+        return "You're working too hard! Take some time to rest and relax.";
+      } else if (actualVsExpected >= 1.1) {
+        return "Impressive! You're exceeding expectations. Can we get this energy next month too?";
+      } else if (actualVsExpected >= 1.0) {
+        return "Perfect! You've hit your target. Keep up the excellent work!";
+      } else if (actualVsExpected >= 0.95) {
+        return "Almost there! Just a little more push and you'll reach the goal. You got this!";
+      } else if (actualVsExpected >= 0.85) {
+        return "Good progress! Stay focused and you'll catch up in no time.";
+      } else if (actualVsExpected >= 0.7) {
+        return "Time to step up the game! The month isn't over yet - you can still make it count.";
+      } else if (actualVsExpected >= 0.5) {
+        return "Are you taking it easy this month? Looks like you could take on more work!";
+      } else {
+        return "Too chill this month? Time to wake up and show what you're capable of!";
+      }
+    };
+
     return {
       totalWorkingDays,
       workingDaysPassed,
@@ -136,7 +161,8 @@ const LoggingTracker = ({ allJiras }) => {
       dailyAnalysis,
       problemDays,
       overLoggedDays,
-      currentDay: today
+      currentDay: today,
+      assessmentMessage: getAssessmentMessage()
     };
   }, [allJiras, getCurrentMonthWorkingDays, getWorkingDaysPassed, getRemainingWorkingDays, isWorkingDay]);
 
@@ -183,36 +209,58 @@ const LoggingTracker = ({ allJiras }) => {
         </div>
       </div>
 
-      {/* Alerts - Minimal */}
-      <div className="space-y-2 mb-3">
-        {trackingData.problemDays.length > 0 && (
-          <div className="flex items-center justify-between text-sm border-l-2 border-black pl-2">
-            <span className="text-gray-700">Problem Days</span>
-            <span className="text-black font-medium">
-              {trackingData.problemDays.map(day => day.day).join(', ')}
-            </span>
+      {/* Monthly Target Info */}
+      <div className="flex items-center justify-between text-sm mb-3 bg-gray-50 p-2">
+        <span className="text-gray-700">Monthly Target: {trackingData.standardHoursPerMonth}h</span>
+        <span className="text-gray-700">Working Days Left: {trackingData.remainingWorkingDays}</span>
+      </div>
+
+      {/* Problem Days Details */}
+      {trackingData.problemDays.length > 0 && (
+        <div className="border-l-2 border-black pl-2 mb-2">
+          <div className="text-sm font-medium text-black mb-1">
+            Problem Days ({trackingData.problemDays.length})
           </div>
-        )}
-        
-        {trackingData.overLoggedDays.length > 0 && (
-          <div className="flex items-center justify-between text-sm border-l-2 border-gray-400 pl-2">
-            <span className="text-gray-700">Over-logged</span>
-            <span className="text-black font-medium">
-              {trackingData.overLoggedDays.map(day => day.day).join(', ')}
-            </span>
+          {trackingData.problemDays.map(day => (
+            <div key={day.day} className="text-xs text-gray-600 flex justify-between">
+              <span>Day {day.day}</span>
+              <span>{day.hoursLogged}h ({day.message})</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Over-logged Days Details */}
+      {trackingData.overLoggedDays.length > 0 && (
+        <div className="border-l-2 border-gray-400 pl-2 mb-2">
+          <div className="text-sm font-medium text-black mb-1">
+            Over-logged Days ({trackingData.overLoggedDays.length})
           </div>
-        )}
+          {trackingData.overLoggedDays.map(day => (
+            <div key={day.day} className="text-xs text-gray-600 flex justify-between">
+              <span>Day {day.day}</span>
+              <span>{day.hoursLogged}h</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Assessment Message */}
+      <div className="border border-gray-300 p-3 mb-3 bg-gray-50">
+        <div className="text-sm text-black italic">
+          "{trackingData.assessmentMessage}"
+        </div>
       </div>
 
       {/* Bottom Summary */}
       <div className="border-t border-gray-200 pt-2 flex items-center justify-between text-sm">
         <span className="text-gray-600">
-          {trackingData.expectedHoursToDate}h expected
+          Expected: {trackingData.expectedHoursToDate}h
         </span>
         <span className={`font-medium ${
           trackingData.hoursDeficit > 0 ? 'text-black' : 'text-gray-600'
         }`}>
-          {trackingData.hoursDeficit > 0 ? '-' : '+'}{Math.abs(trackingData.hoursDeficit).toFixed(1)}h
+          {trackingData.hoursDeficit > 0 ? 'Deficit: ' : 'Surplus: '}{Math.abs(trackingData.hoursDeficit).toFixed(1)}h
         </span>
       </div>
     </div>
