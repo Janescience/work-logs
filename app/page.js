@@ -3,14 +3,12 @@ import { useEffect, useState } from 'react';
 import { 
   NeedAction, 
   DashboardStats, 
-  RecentActivity, 
-  ProductivityInsights,
+  RecentActivity,
   TaskTimeline,
   HolidaysDisplay,
   LoggingTracker
 } from '@/components/dashboard';
 import { MyJiras } from '@/components/jira';
-import { WeeklyProgress } from '@/components/calendar';
 import { PageHeader } from '@/components/ui';
 
 import { useJiras } from '@/hooks/api';
@@ -58,12 +56,10 @@ export default function Home() {
         <div className="p-4 ">
           
           {/* Top Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             <div className="col-span-2 h-full"><NeedAction allJiras={allJiras} /></div>
-            <div className="h-full"><WeeklyProgress allJiras={allJiras} /></div>
-            <div className="h-full"><ProductivityInsights allJiras={allJiras} /></div>
+            <div className="h-full"><LoggingTracker allJiras={allJiras} /></div>
             <div className="h-full"><HolidaysDisplay /></div>
-
           </div>
 
           {/* Middle Row */}
@@ -76,7 +72,7 @@ export default function Home() {
 
           {/* Bottom Row */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            <div className="h-full col-span-2"><LoggingTracker allJiras={allJiras} /></div>
+
           </div>
 
         </div>

@@ -152,139 +152,68 @@ const LoggingTracker = ({ allJiras }) => {
     );
   }
 
-  const getPerformanceStatus = (ratio) => {
-    if (ratio >= 95) return { color: 'text-green-600', icon: faCheckCircle, label: 'Excellent' };
-    if (ratio >= 85) return { color: 'text-blue-600', icon: faBalanceScale, label: 'Good' };
-    if (ratio >= 70) return { color: 'text-yellow-600', icon: faExclamationTriangle, label: 'Behind' };
-    return { color: 'text-red-600', icon: faTimesCircle, label: 'Critical' };
-  };
-
-  const performanceStatus = getPerformanceStatus(trackingData.performanceRatio);
-
   return (
     <div className="bg-white p-4 border border-gray-300">
-      <h2 className="text-lg font-medium text-black mb-4 flex items-center">
+      <h2 className="text-lg font-medium text-black mb-3 flex items-center">
         <FontAwesomeIcon icon={faCalendarCheck} className="mr-2 text-gray-600" />
         Logging Tracker
       </h2>
 
-      {/* Performance Overview */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="bg-gray-50 p-3 rounded">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-medium text-gray-600 uppercase">Progress</span>
-            <FontAwesomeIcon 
-              icon={performanceStatus.icon} 
-              className={`text-sm ${performanceStatus.color}`} 
-            />
-          </div>
+      {/* Main Stats */}
+      <div className="grid grid-cols-3 gap-3 mb-3">
+        <div className="text-center p-2 border border-gray-200">
           <div className="text-lg font-bold text-black">
-            {trackingData.performanceRatio.toFixed(1)}%
+            {trackingData.performanceRatio.toFixed(0)}%
           </div>
-          <div className="text-xs text-gray-500">
-            {performanceStatus.label}
-          </div>
+          <div className="text-xs text-gray-600">Progress</div>
         </div>
-
-        <div className="bg-gray-50 p-3 rounded">
-          <div className="text-xs font-medium text-gray-600 uppercase mb-1">Hours Status</div>
+        
+        <div className="text-center p-2 border border-gray-200">
           <div className="text-lg font-bold text-black">
             {trackingData.totalHoursLogged.toFixed(1)}h
           </div>
-          <div className="text-xs text-gray-500">
-            of {trackingData.expectedHoursToDate}h expected
+          <div className="text-xs text-gray-600">Logged</div>
+        </div>
+        
+        <div className="text-center p-2 border border-gray-200">
+          <div className="text-lg font-bold text-black">
+            {trackingData.averageHoursPerRemainingDay.toFixed(1)}h
           </div>
+          <div className="text-xs text-gray-600">Need/Day</div>
         </div>
       </div>
 
-      {/* Daily Requirement */}
-      {trackingData.remainingWorkingDays > 0 && (
-        <div className="bg-blue-50 border border-blue-200 p-3 rounded mb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium text-blue-800">
-                Required daily average
-              </div>
-              <div className="text-xs text-blue-600">
-                For remaining {trackingData.remainingWorkingDays} working days
-              </div>
-            </div>
-            <div className="text-lg font-bold text-blue-800">
-              {trackingData.averageHoursPerRemainingDay.toFixed(1)}h/day
-            </div>
+      {/* Alerts - Minimal */}
+      <div className="space-y-2 mb-3">
+        {trackingData.problemDays.length > 0 && (
+          <div className="flex items-center justify-between text-sm border-l-2 border-black pl-2">
+            <span className="text-gray-700">Problem Days</span>
+            <span className="text-black font-medium">
+              {trackingData.problemDays.map(day => day.day).join(', ')}
+            </span>
           </div>
-        </div>
-      )}
+        )}
+        
+        {trackingData.overLoggedDays.length > 0 && (
+          <div className="flex items-center justify-between text-sm border-l-2 border-gray-400 pl-2">
+            <span className="text-gray-700">Over-logged</span>
+            <span className="text-black font-medium">
+              {trackingData.overLoggedDays.map(day => day.day).join(', ')}
+            </span>
+          </div>
+        )}
+      </div>
 
-      {/* Problem Days Alert */}
-      {trackingData.problemDays.length > 0 && (
-        <div className="bg-red-50 border border-red-200 p-3 rounded mb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium text-red-800 flex items-center">
-                <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2" />
-                Problem Days
-              </div>
-              <div className="text-xs text-red-600">
-                {trackingData.problemDays.length} days with insufficient logging
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-xs text-red-600">
-                {trackingData.problemDays.map(day => day.day).join(', ')}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Over-logged Days */}
-      {trackingData.overLoggedDays.length > 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 p-3 rounded mb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium text-yellow-800">
-                Over-logged Days
-              </div>
-              <div className="text-xs text-yellow-600">
-                {trackingData.overLoggedDays.length} days with excess logging
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-xs text-yellow-600">
-                {trackingData.overLoggedDays.map(day => day.day).join(', ')}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Monthly Summary */}
-      <div className="border-t border-gray-200 pt-3">
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div>
-            <div className="text-sm font-medium text-gray-600">Target</div>
-            <div className="text-lg font-bold text-black">
-              {trackingData.standardHoursPerMonth}h
-            </div>
-          </div>
-          <div>
-            <div className="text-sm font-medium text-gray-600">Logged</div>
-            <div className="text-lg font-bold text-black">
-              {trackingData.totalHoursLogged.toFixed(1)}h
-            </div>
-          </div>
-          <div>
-            <div className="text-sm font-medium text-gray-600">
-              {trackingData.hoursDeficit > 0 ? 'Deficit' : 'Surplus'}
-            </div>
-            <div className={`text-lg font-bold ${
-              trackingData.hoursDeficit > 0 ? 'text-red-600' : 'text-green-600'
-            }`}>
-              {Math.abs(trackingData.hoursDeficit).toFixed(1)}h
-            </div>
-          </div>
-        </div>
+      {/* Bottom Summary */}
+      <div className="border-t border-gray-200 pt-2 flex items-center justify-between text-sm">
+        <span className="text-gray-600">
+          {trackingData.expectedHoursToDate}h expected
+        </span>
+        <span className={`font-medium ${
+          trackingData.hoursDeficit > 0 ? 'text-black' : 'text-gray-600'
+        }`}>
+          {trackingData.hoursDeficit > 0 ? '-' : '+'}{Math.abs(trackingData.hoursDeficit).toFixed(1)}h
+        </span>
       </div>
     </div>
   );
