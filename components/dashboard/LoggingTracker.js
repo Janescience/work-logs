@@ -125,9 +125,11 @@ const LoggingTracker = ({ allJiras }) => {
 
     // Generate performance assessment message based on monthly progress
     const getAssessmentMessage = () => {
-      // Calculate expected progress based on working days passed
-      const expectedProgressRatio = workingDaysPassed / totalWorkingDays;
-      const actualVsExpected = performanceRatio / 100 / expectedProgressRatio;
+      // Calculate expected hours to this point in month
+      const expectedHoursToDate = (workingDaysPassed / totalWorkingDays) * standardHoursPerMonth;
+      
+      // Calculate ratio of actual vs expected hours to this point
+      const actualVsExpected = expectedHoursToDate > 0 ? totalHoursLogged / expectedHoursToDate : 0;
       
       if (performanceRatio >= 120) {
         return "You're working too hard! Take some time to rest and relax.";
