@@ -193,7 +193,7 @@ export default function DailyLogsPage() {
               const logDate = new Date(log.logDate).toLocaleDateString('en-GB');
               return `${logDate}: ${log.taskDescription} (${log.timeSpent}h)`;
             })
-            .join('\n') : '-';
+            .join('\r\n') : '-';
         
         // Format deploy dates - join with line breaks for better readability
         const deployDates = [
@@ -201,7 +201,7 @@ export default function DailyLogsPage() {
           jira.deployUatDate ? `UAT: ${new Date(jira.deployUatDate).toLocaleDateString('en-GB')}` : '',
           jira.deployPreprodDate ? `PREPROD: ${new Date(jira.deployPreprodDate).toLocaleDateString('en-GB')}` : '',
           jira.deployProdDate ? `PROD: ${new Date(jira.deployProdDate).toLocaleDateString('en-GB')}` : ''
-        ].filter(Boolean).join('\n') || '-';
+        ].filter(Boolean).join('\r\n') || '-';
         
         // Create table row with Project column
         return `${project}\t${service}\t${jira.jiraNumber}\t${jira.description}\t${jiraStatus}\t${actualStatus}\t${dailyLogText}\t${deployDates}`;
