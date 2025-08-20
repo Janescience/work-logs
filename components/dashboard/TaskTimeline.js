@@ -24,16 +24,26 @@ const TaskTimeline = ({ allJiras }) => {
           { name: 'Prod', date: jira.deployProdDate ? new Date(jira.deployProdDate) : null, env: 'prod' }
         ];
         
-        // Find current phase and next phase
+        // Find current phase and next phase based on today's date
         let currentPhase = null;
         let nextPhase = null;
         let completedPhases = 0;
         
         for (let i = 0; i < deployPhases.length; i++) {
           if (deployPhases[i].date) {
-            currentPhase = deployPhases[i];
-            completedPhases++;
+            // Check if deploy date has passed (is in the past or today)
+            if (deployPhases[i].date <= today) {
+              currentPhase = deployPhases[i];
+              completedPhases++;
+            } else {
+              // This phase has a date but it's in the future, so it's the next phase
+              if (!nextPhase) {
+                nextPhase = deployPhases[i];
+              }
+              break;
+            }
           } else {
+            // No deploy date set for this phase, it becomes the next phase
             if (!nextPhase) {
               nextPhase = deployPhases[i];
             }
@@ -63,20 +73,37 @@ const TaskTimeline = ({ allJiras }) => {
         if (jira.actualStatus?.toLowerCase() === 'done') {
           progress = 100;
         } else if (hasDeploymentDates) {
-          // Calculate progress based on deployment phases (25% per phase)
+          // Calculate progress based on deployment phases (25% per phase completed)
+          // Only count phases that have actually been deployed (passed their date)
           progress = completedPhases * 25;
+          
+          // If all phases are completed but status isn't done, set to 90% to show it's almost done
+          if (completedPhases === 4 && jira.actualStatus?.toLowerCase() !== 'done') {
+            progress = 90;
+          }
         } else {
-          // Calculate progress based on days in current month
-          const now = new Date();
-          const currentMonth = now.getMonth();
-          const currentYear = now.getFullYear();
-          const currentDay = now.getDate();
-          
-          // Get last day of current month
-          const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-          
-          // Calculate progress as percentage of month completion
-          progress = Math.min(100, Math.round((currentDay / lastDayOfMonth) * 100));
+          // For tasks without deployment dates, calculate based on actual status
+          const status = (jira.actualStatus || '').toLowerCase();
+          switch (status) {
+            case 'in progress':
+            case 'develop':
+            case 'analysis':
+              progress = 30;
+              break;
+            case 'sit':
+              progress = 50;
+              break;
+            case 'uat':
+              progress = 70;
+              break;
+            case 'awaiting production':
+            case 'production':
+              progress = 90;
+              break;
+            default:
+              progress = 10; // Default for new tasks
+              break;
+          }
         }
         
         return {

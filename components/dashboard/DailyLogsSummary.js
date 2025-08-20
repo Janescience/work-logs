@@ -16,6 +16,8 @@ const DailyLogsSummary = ({ stats }) => {
       totalTasks: 0,
       activeCount: 0, 
       doneCount: 0,
+      todayHours: 0,
+      weekHours: 0,
       monthHours: 0
     };
     
@@ -46,6 +48,20 @@ const DailyLogsSummary = ({ stats }) => {
       color: 'text-green-600'
     },
     { 
+      label: 'TODAY HOURS', 
+      value: `${(enhancedStats.todayHours || 0).toFixed(1)}h`,
+      subtext: 'logged today',
+      icon: faClock,
+      color: 'text-blue-500'
+    },
+    { 
+      label: 'THIS WEEK', 
+      value: `${(enhancedStats.weekHours || 0).toFixed(1)}h`,
+      subtext: 'logged this week',
+      icon: faCalendarWeek,
+      color: 'text-indigo-600'
+    },
+    { 
       label: 'THIS MONTH', 
       value: `${(enhancedStats.monthHours || 0).toFixed(1)}h`,
       subtext: 'total hours',
@@ -56,7 +72,7 @@ const DailyLogsSummary = ({ stats }) => {
 
   return (
     <div className="px-6 py-4">
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-6 gap-4">
         {statItems.map((item, index) => (
           <div key={index} className="text-center p-4 bg-white border border-gray-200 hover:shadow-sm transition-shadow">
             <div className="flex justify-center mb-2">
