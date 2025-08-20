@@ -203,8 +203,11 @@ export default function DailyLogsPage() {
           jira.deployProdDate ? `PROD: ${new Date(jira.deployProdDate).toLocaleDateString('en-GB')}` : ''
         ].filter(Boolean).join('\r\n') || '-';
         
-        // Create table row with Project column
-        return `${project}\t${service}\t${jira.jiraNumber}\t${jira.description}\t${jiraStatus}\t${actualStatus}\t${dailyLogText}\t${deployDates}`;
+        // Create table row with Project column - wrap multi-line fields in quotes
+        const quotedDailyLog = dailyLogText.includes('\r\n') ? `"${dailyLogText}"` : dailyLogText;
+        const quotedDeployDates = deployDates.includes('\r\n') ? `"${deployDates}"` : deployDates;
+        
+        return `${project}\t${service}\t${jira.jiraNumber}\t${jira.description}\t${jiraStatus}\t${actualStatus}\t${quotedDailyLog}\t${quotedDeployDates}`;
       };
 
       // Create table headers
