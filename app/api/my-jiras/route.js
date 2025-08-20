@@ -23,7 +23,7 @@ export async function GET(req) {
     // Construct JQL to query Jiras assigned to the provided email
     // Note: Jira's assignee field usually accepts username or email. Using email is more robust.
     const jql = encodeURIComponent(`assignee="${userEmail}"`); // ใช้ userEmail แทน JIRA_USER
-    const apiUrl = `https://${JIRA_DOMAIN}/rest/api/3/search?jql=${jql}&fields=key,summary,created,reporter,status,assignee`;
+    const apiUrl = `https://${JIRA_DOMAIN}/rest/api/3/search/jql?jql=${jql}&fields=key,summary,created,reporter,status,assignee`;
     console.log("Fetching Jira issues for user:", userEmail);
     console.log("Jira API URL:", apiUrl);
     console.log("Authorization Header:", Buffer.from(`${JIRA_USER}:${JIRA_API_TOKEN}`).toString('base64'));

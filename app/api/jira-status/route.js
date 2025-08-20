@@ -15,7 +15,7 @@ export async function GET(req) {
 
     // สร้าง JQL query เพื่อดึงข้อมูลทีเดียว
     const jql = `key in (${jiraNumbers.join(',')})`;
-    const apiUrl = `https://${JIRA_DOMAIN}/rest/api/3/search?jql=${encodeURIComponent(jql)}&fields=status,key`;
+    const apiUrl = `https://${JIRA_DOMAIN}/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=status,key`;
 
     try {
         const resp = await fetch(apiUrl, {
