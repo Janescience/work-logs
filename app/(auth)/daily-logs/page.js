@@ -171,10 +171,14 @@ export default function DailyLogsPage() {
       let summaryContent = [];
 
       const formatJiraContentAsTable = (jira, isFirstInGroup = false) => {
-        // Filter daily logs based on date filter
-        const filteredLogs = jira.dailyLogs ? jira.dailyLogs.filter(log => 
-          isDateInRange(log.logDate, activeFilters.dateRange || 'thisMonth')
-        ) : [];
+        // Filter daily logs to last 2 months only for Copy Summary
+        const now = new Date();
+        const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+        
+        const filteredLogs = jira.dailyLogs ? jira.dailyLogs.filter(log => {
+          const logDate = new Date(log.logDate);
+          return logDate >= twoMonthsAgo;
+        }) : [];
 
         const project = jira.projectName || '';
         const service = jira.serviceName || '';
@@ -224,7 +228,19 @@ export default function DailyLogsPage() {
           summaryContent.push(`PROJECT: ${project}`);
           summaryContent.push('Project\tService\tJira Number\tDescription\tJira Status\tActual Status\tDaily Log\tDeploy Date');
           
-          jiras.forEach(jira => {
+          // Sort jiras within project by Service then Jira Status
+          const sortedJiras = [...jiras].sort((a, b) => {
+            const serviceA = (a.serviceName || '').toLowerCase();
+            const serviceB = (b.serviceName || '').toLowerCase();
+            if (serviceA !== serviceB) {
+              return serviceA.localeCompare(serviceB);
+            }
+            const statusA = (externalStatuses[a.jiraNumber] || 'unknown').toLowerCase();
+            const statusB = (externalStatuses[b.jiraNumber] || 'unknown').toLowerCase();
+            return statusA.localeCompare(statusB);
+          });
+          
+          sortedJiras.forEach(jira => {
             summaryContent.push(formatJiraContentAsTable(jira));
           });
         });
@@ -259,15 +275,43 @@ export default function DailyLogsPage() {
             summaryContent.push(`  PROJECT: ${project}`);
             summaryContent.push('Project\tService\tJira Number\tDescription\tJira Status\tActual Status\tDaily Log\tDeploy Date');
             
-            projectJiras.forEach(jira => {
+            // Sort jiras within project by Jira Status
+            const sortedProjectJiras = [...projectJiras].sort((a, b) => {
+              const statusA = (externalStatuses[a.jiraNumber] || 'unknown').toLowerCase();
+              const statusB = (externalStatuses[b.jiraNumber] || 'unknown').toLowerCase();
+              return statusA.localeCompare(statusB);
+            });
+            
+            sortedProjectJiras.forEach(jira => {
               summaryContent.push(formatJiraContentAsTable(jira));
             });
           });
         });
 
       } else {
-        // List view - Simple table without grouping
-        filteredJiras.forEach(jira => {
+        // List view - Simple table without grouping with sorting
+        const sortedJiras = [...filteredJiras].sort((a, b) => {
+          // Sort by Project first
+          const projectA = (a.projectName || '').toLowerCase();
+          const projectB = (b.projectName || '').toLowerCase();
+          if (projectA !== projectB) {
+            return projectA.localeCompare(projectB);
+          }
+          
+          // Then by Service
+          const serviceA = (a.serviceName || '').toLowerCase();
+          const serviceB = (b.serviceName || '').toLowerCase();
+          if (serviceA !== serviceB) {
+            return serviceA.localeCompare(serviceB);
+          }
+          
+          // Finally by Jira Status
+          const statusA = (externalStatuses[a.jiraNumber] || 'unknown').toLowerCase();
+          const statusB = (externalStatuses[b.jiraNumber] || 'unknown').toLowerCase();
+          return statusA.localeCompare(statusB);
+        });
+        
+        sortedJiras.forEach(jira => {
           summaryContent.push(formatJiraContentAsTable(jira));
         });
       }
