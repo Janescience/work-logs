@@ -182,10 +182,10 @@ export default function DailyLogsPage() {
 
         const project = jira.projectName || '';
         const service = jira.serviceName || '';
-        const jiraStatus = externalStatuses[jira.jiraNumber] || 'Unknown';
+        const jiraStatus = externalStatuses[jira.jiraNumber] || '';
         const actualStatus = jira.actualStatus || 'No Status';
         
-        // Format daily logs - join with semicolon to keep in single cell
+        // Format daily logs - join with line breaks for better readability
         const dailyLogText = filteredLogs.length > 0 ? 
           filteredLogs
             .sort((a, b) => new Date(a.logDate) - new Date(b.logDate))
@@ -193,15 +193,15 @@ export default function DailyLogsPage() {
               const logDate = new Date(log.logDate).toLocaleDateString('en-GB');
               return `${logDate}: ${log.taskDescription} (${log.timeSpent}h)`;
             })
-            .join('; ') : '-';
+            .join('\n') : '-';
         
-        // Format deploy dates - join with semicolon to keep in single cell
+        // Format deploy dates - join with line breaks for better readability
         const deployDates = [
           jira.deploySitDate ? `SIT: ${new Date(jira.deploySitDate).toLocaleDateString('en-GB')}` : '',
           jira.deployUatDate ? `UAT: ${new Date(jira.deployUatDate).toLocaleDateString('en-GB')}` : '',
           jira.deployPreprodDate ? `PREPROD: ${new Date(jira.deployPreprodDate).toLocaleDateString('en-GB')}` : '',
           jira.deployProdDate ? `PROD: ${new Date(jira.deployProdDate).toLocaleDateString('en-GB')}` : ''
-        ].filter(Boolean).join('; ') || '-';
+        ].filter(Boolean).join('\n') || '-';
         
         // Create table row with Project column
         return `${project}\t${service}\t${jira.jiraNumber}\t${jira.description}\t${jiraStatus}\t${actualStatus}\t${dailyLogText}\t${deployDates}`;
@@ -235,8 +235,8 @@ export default function DailyLogsPage() {
             if (serviceA !== serviceB) {
               return serviceA.localeCompare(serviceB);
             }
-            const statusA = (externalStatuses[a.jiraNumber] || 'unknown').toLowerCase();
-            const statusB = (externalStatuses[b.jiraNumber] || 'unknown').toLowerCase();
+            const statusA = (externalStatuses[a.jiraNumber] || '').toLowerCase();
+            const statusB = (externalStatuses[b.jiraNumber] || '').toLowerCase();
             return statusA.localeCompare(statusB);
           });
           
@@ -277,8 +277,8 @@ export default function DailyLogsPage() {
             
             // Sort jiras within project by Jira Status
             const sortedProjectJiras = [...projectJiras].sort((a, b) => {
-              const statusA = (externalStatuses[a.jiraNumber] || 'unknown').toLowerCase();
-              const statusB = (externalStatuses[b.jiraNumber] || 'unknown').toLowerCase();
+              const statusA = (externalStatuses[a.jiraNumber] || '').toLowerCase();
+              const statusB = (externalStatuses[b.jiraNumber] || '').toLowerCase();
               return statusA.localeCompare(statusB);
             });
             
@@ -306,8 +306,8 @@ export default function DailyLogsPage() {
           }
           
           // Finally by Jira Status
-          const statusA = (externalStatuses[a.jiraNumber] || 'unknown').toLowerCase();
-          const statusB = (externalStatuses[b.jiraNumber] || 'unknown').toLowerCase();
+          const statusA = (externalStatuses[a.jiraNumber] || '').toLowerCase();
+          const statusB = (externalStatuses[b.jiraNumber] || '').toLowerCase();
           return statusA.localeCompare(statusB);
         });
         
