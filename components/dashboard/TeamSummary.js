@@ -128,7 +128,7 @@ const TeamSummary = ({ teamData }) => {
               totalCompletedThisMonth++;
               memberStats[memberInfo.username].completedThisMonth++;
             }
-          }ส
+          }
         }
 
         // Project stats
