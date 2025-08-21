@@ -195,13 +195,11 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
         completedStatusGroups[originalStatusName].push(issue);
         completed.push(issue);
       } else {
-        // Active statuses - exclude untracked items (they're shown separately)
-        if (isTracked) {
-          if (!statusGroups[originalStatusName]) {
-            statusGroups[originalStatusName] = [];
-          }
-          statusGroups[originalStatusName].push(issue);
+        // Active statuses - show all active issues in groups (both tracked and untracked)
+        if (!statusGroups[originalStatusName]) {
+          statusGroups[originalStatusName] = [];
         }
+        statusGroups[originalStatusName].push(issue);
         active.push(issue);
       }
     });
@@ -319,11 +317,11 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
       <td className="p-3 w-20 text-xs text-gray-500  whitespace-nowrap">
         {formatDate(issue.fields.created)}
       </td>
-      {!readOnly && (
-        <td className="px-4 py-3 whitespace-nowrap text-center">
-          {isTracked ? (
-            <FontAwesomeIcon icon={faCheckSquare} className="text-green-600" />
-          ) : (
+      <td className="px-4 py-3 whitespace-nowrap text-center">
+        {isTracked ? (
+          <FontAwesomeIcon icon={faCheckSquare} className="text-green-600" />
+        ) : (
+          !readOnly ? (
             <button
               onClick={() => quickAddJira(issue)}
               className="text-gray-400 hover:text-black transition-colors"
@@ -331,9 +329,11 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
             >
               <FontAwesomeIcon icon={faPlus} />
             </button>
-          )}
-        </td>
-      )}
+          ) : (
+            <FontAwesomeIcon icon={faSquare} className="text-gray-300" />
+          )
+        )}
+      </td>
     </tr>
   );
 
@@ -357,20 +357,25 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
       <td className="p-3 w-20 text-xs text-gray-500 whitespace-nowrap">
         {formatDate(issue.fields.updated)}
       </td>
-      {!readOnly && (
-        <td className="p-3 w-20 text-center">
-          {isTracked ? (
-            <FontAwesomeIcon icon={faCheckSquare} className="text-green-500" />
-          ) : (
-            <FontAwesomeIcon icon={faSquare} className="text-gray-300" />
-          )}
-        </td>
-      )}
+      <td className="p-3 w-20 text-center">
+        {isTracked ? (
+          <FontAwesomeIcon icon={faCheckSquare} className="text-green-500" />
+        ) : (
+          <FontAwesomeIcon icon={faSquare} className="text-gray-300" />
+        )}
+      </td>
     </tr>
   );
 
   return (
     <div className="bg-white overflow-hidden border border-gray-300">
+      {/* Component Title */}
+      <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
+        <h3 className="text-sm font-medium text-black">
+          {readOnly && userName ? `${userName}'s JIRAs` : 'My JIRAs'}
+        </h3>
+      </div>
+      
       {/* Clean Header */}
       <div className="border-b border-gray-200 p-3">
         <div className="flex items-center justify-between">
@@ -383,7 +388,7 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
             </span>
             {untrackedCount > 0 && (
               <span className="text-sm text-red-600">
-                {untrackedCount} {readOnly ? 'Not tracked' : 'Untracked'}
+                {untrackedCount} Untracked
               </span>
             )}
           </div>
@@ -426,11 +431,15 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
           <div className="bg-gray-100 border-b border-gray-200 p-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-black">
-                {readOnly ? 'Not Tracked in Work Logs' : 'Untracked'}
+                Untracked 
               </span>
-              {!readOnly && (
+              {!readOnly ? (
                 <span className="text-xs text-gray-600">
                   Click + to add to tracking
+                </span>
+              ) : (
+                <span className="text-xs text-gray-500">
+                  Read-only view
                 </span>
               )}
             </div>
@@ -443,9 +452,7 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Summary</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24">Status</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-20">Created</th>
-                  {!readOnly && (
-                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase w-20">Tracked</th>
-                  )}
+                  <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase w-20">Tracked</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
@@ -472,8 +479,8 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
                     <td className="p-3 w-20 text-xs text-gray-600 whitespace-nowrap">
                       {formatDate(issue.fields.created)}
                     </td>
-                    {!readOnly && (
-                      <td className="p-3 w-20 text-center">
+                    <td className="p-3 w-20 text-center">
+                      {!readOnly ? (
                         <button
                           onClick={() => quickAddJira(issue)}
                           className="text-black hover:text-gray-600 transition-colors p-1"
@@ -481,8 +488,10 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
                         >
                           <FontAwesomeIcon icon={faPlus} className="w-4 h-4" />
                         </button>
-                      </td>
-                    )}
+                      ) : (
+                        <FontAwesomeIcon icon={faSquare} className="text-gray-300" />
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -513,9 +522,7 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-32">JIRA</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Summary</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-20">Created</th>
-                      {!readOnly && (
-                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase w-20">Tracked</th>
-                      )}
+                      <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase w-20">Tracked</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -555,9 +562,7 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-32">JIRA</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Summary</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-20">Updated</th>
-                        {!readOnly && (
-                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase w-20">Tracked</th>
-                        )}
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase w-20">Tracked</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
