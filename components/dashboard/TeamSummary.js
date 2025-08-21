@@ -60,8 +60,8 @@ const WeeklyActivityGrid = ({ teamData }) => {
                 initials: getInitials(memberInfo.username),
                 avatar: getAvatarUrl(memberInfo.username),
                 jiraNumber: jira.jiraNumber,
-                jiraDesc: jira.description ? jira.description.slice(0, 15) + (jira.description.length > 15 ? '...' : '') : 'No description',
-                logDesc: log.description ? log.description.slice(0, 15) + (log.description.length > 15 ? '...' : '') : 'No description',
+                jiraDesc: jira.description || 'No description',
+                logDesc: log.taskDescription || 'No description',
                 hours: parseFloat(log.timeSpent || 0)
               });
             }
@@ -106,28 +106,35 @@ const WeeklyActivityGrid = ({ teamData }) => {
                   <div className="space-y-1">
                     {activities.length > 0 ? (
                       activities.map((activity, index) => (
-                        <div key={index} className="text-xs space-y-0.5">
-                          <div className="flex items-center gap-1">
+                        <div 
+                          key={index} 
+                          className="text-xs p-1 hover:bg-gray-100 rounded cursor-pointer border border-gray-100 relative group"
+                        >
+                          <div className="flex items-center gap-1 mb-1">
                             <img 
                               src={activity.avatar} 
                               alt={activity.username}
-                              className="w-3 h-3 rounded-full"
+                              className="w-4 h-4 rounded-full"
                             />
-                            <span className="font-medium text-gray-800">
+                            <span className="font-medium text-gray-800 text-xs">
                               {activity.initials}
                             </span>
                           </div>
-                          <div className="text-blue-600 font-mono">
+                          <div className="text-blue-600 font-mono text-xs">
                             {activity.jiraNumber}
                           </div>
-                          <div className="text-gray-700 truncate">
-                            {activity.jiraDesc}
-                          </div>
-                          <div className="text-gray-600 truncate">
-                            {activity.logDesc}
-                          </div>
-                          <div className="text-orange-600 font-medium">
+                          <div className="text-orange-600 font-medium text-xs">
                             {activity.hours}h
+                          </div>
+                          
+                          {/* Tooltip */}
+                          <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10 shadow-lg">
+                            <div className="font-semibold">{activity.username}</div>
+                            <div className="text-blue-300">{activity.jiraNumber}</div>
+                            <div className="max-w-48 break-words">{activity.jiraDesc}</div>
+                            <div className="text-gray-300 max-w-48 break-words">Log: {activity.logDesc}</div>
+                            <div className="text-orange-300 font-semibold">{activity.hours} hours</div>
+                            <div className="absolute top-full left-2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                           </div>
                         </div>
                       ))
