@@ -10,7 +10,7 @@ import DailyLog from '@/models/dailyLog.model'; // Import DailyLog Model
 import dbConnect from '@/lib/mongodb';
 
 
-export async function GET() {
+export async function GET(request) {
   try {
     await dbConnect();
     const session = await getServerSession(authOptions); // ดึง session
@@ -19,9 +19,20 @@ export async function GET() {
       return NextResponse.json({ message: 'Unauthorized: No valid session' }, { status: 401 });
     }
 
-    const userId = session.user.id;
+    const { searchParams } = new URL(request.url);
+    const assignee = searchParams.get('assignee');
+    
+    let query = {};
+    
+    if (assignee) {
+      // If assignee is specified, filter by assignee email (for team lead viewing member's data)
+      query.assignee = assignee;
+    } else {
+      // Default behavior: filter by current user's userId
+      query.userId = session.user.id;
+    }
 
-    const jiras = await Jira.find({ userId: userId })
+    const jiras = await Jira.find(query)
       .populate({
         path: 'dailyLogs'
       })

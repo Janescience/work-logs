@@ -75,8 +75,9 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
       console.log('📊 External API data:', externalData);
       console.log('📋 Issues found:', externalData.issues?.length || 0);
 
-      // Fetch internal JIRAs
-      const internalRes = await fetch(`/api/jiras`);
+      // Fetch internal JIRAs - filter by assignee if we're viewing someone else's data
+      const internalUrl = readOnly ? `/api/jiras?assignee=${encodeURIComponent(userEmail)}` : `/api/jiras`;
+      const internalRes = await fetch(internalUrl);
       if (!internalRes.ok) {
         const errorData = await internalRes.json();
         throw new Error(errorData.message || "Failed to load internal JIRA numbers");
@@ -95,11 +96,11 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
   };
 
   useEffect(() => {
-    if (status === 'authenticated' && session?.user?.email && !hasInitialized) {
+    if ((status === 'authenticated' || readOnly) && userEmail && !hasInitialized) {
       fetchJiras();
       setHasInitialized(true);
     }
-  }, [status, session?.user?.email, hasInitialized]); // Only fetch once when authenticated
+  }, [status, userEmail, hasInitialized, readOnly]); // Use userEmail prop instead of session email
 
   // Show sync confirmation modal
   const handleSyncClick = () => {
@@ -382,7 +383,7 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
             </span>
             {untrackedCount > 0 && (
               <span className="text-sm text-red-600">
-                {untrackedCount} Untracked
+                {untrackedCount} {readOnly ? 'Not tracked' : 'Untracked'}
               </span>
             )}
           </div>
@@ -395,29 +396,25 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
                 {showCompleted ? 'Hide' : 'Show'} Done
               </button>
             )}
-            {!readOnly && (
-              <>
-                <button
-                  onClick={() => {
-                    setHasInitialized(false); // Allow refresh
-                    fetchJiras();
-                  }}
-                  className="text-sm text-gray-500 hover:text-black transition-colors"
-                  disabled={loading}
-                  title="Refresh data"
-                >
-                  <FontAwesomeIcon icon={faSync} className={loading ? 'animate-spin' : ''} />
-                </button>
-                {untrackedCount > 0 && (
-                  <button
-                    onClick={handleSyncClick}
-                    disabled={syncing}
-                    className="px-3 py-1 bg-black text-white text-sm rounded hover:bg-gray-800 transition-colors disabled:opacity-50"
-                  >
-                    {syncing ? 'Tracking...' : `Track ${untrackedCount} JIRAs`}
-                  </button>
-                )}
-              </>
+            <button
+              onClick={() => {
+                setHasInitialized(false); // Allow refresh
+                fetchJiras();
+              }}
+              className="text-sm text-gray-500 hover:text-black transition-colors"
+              disabled={loading}
+              title="Refresh data"
+            >
+              <FontAwesomeIcon icon={faSync} className={loading ? 'animate-spin' : ''} />
+            </button>
+            {!readOnly && untrackedCount > 0 && (
+              <button
+                onClick={handleSyncClick}
+                disabled={syncing}
+                className="px-3 py-1 bg-black text-white text-sm rounded hover:bg-gray-800 transition-colors disabled:opacity-50"
+              >
+                {syncing ? 'Tracking...' : `Track ${untrackedCount} JIRAs`}
+              </button>
             )}
           </div>
         </div>
@@ -429,11 +426,13 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
           <div className="bg-gray-100 border-b border-gray-200 p-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-black">
-                Untracked 
+                {readOnly ? 'Not Tracked in Work Logs' : 'Untracked'}
               </span>
-              <span className="text-xs text-gray-600">
-                Click + to add to tracking
-              </span>
+              {!readOnly && (
+                <span className="text-xs text-gray-600">
+                  Click + to add to tracking
+                </span>
+              )}
             </div>
           </div>
           <div className="overflow-x-auto">
