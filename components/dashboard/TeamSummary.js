@@ -25,6 +25,21 @@ const getAvatarUrl = (username) => {
 };
 
 const WeeklyActivityGrid = ({ teamData }) => {
+  const [hoveredActivity, setHoveredActivity] = React.useState(null);
+  const [tooltipPosition, setTooltipPosition] = React.useState({ x: 0, y: 0 });
+
+  const handleMouseEnter = (userActivity, event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setTooltipPosition({
+      x: rect.left + rect.width / 2,
+      y: rect.top - 10
+    });
+    setHoveredActivity(userActivity);
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredActivity(null);
+  };
   // Generate 14 days ago to today
   const getDatesArray = () => {
     const dates = [];
@@ -86,11 +101,38 @@ const WeeklyActivityGrid = ({ teamData }) => {
   const dates = getDatesArray();
   const weeks = [dates.slice(0, 7), dates.slice(7, 14)];
 
+  // Calculate total hours for a week
+  const getWeekTotalHours = (weekDates) => {
+    let totalHours = 0;
+    weekDates.forEach(date => {
+      const activities = getActivitiesForDate(date, teamData);
+      activities.forEach(userActivity => {
+        totalHours += userActivity.totalHours;
+      });
+    });
+    return totalHours;
+  };
+
   return (
-    <div className="space-y-4">
-      {weeks.map((week, weekIndex) => (
-        <div key={weekIndex} className="overflow-x-auto">
-          <div className="grid grid-cols-7 gap-1 min-w-full">
+    <div className="space-y-4 relative">
+      {weeks.map((week, weekIndex) => {
+        const weekTotalHours = getWeekTotalHours(week);
+        const weekStartDate = week[0];
+        const weekEndDate = week[6];
+        
+        return (
+          <div key={weekIndex} className="overflow-x-auto">
+            {/* Week Header */}
+            <div className="mb-2 flex items-center justify-between bg-gray-50 px-3 py-2 rounded-t border border-gray-200">
+              <span className="text-sm font-medium text-gray-700">
+                Week {weekIndex + 1}: {weekStartDate.toLocaleDateString('en', { month: 'short', day: 'numeric' })} - {weekEndDate.toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+              </span>
+              <span className="text-sm font-semibold text-orange-600">
+                {weekTotalHours.toFixed(1)}h total
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-7 gap-1 min-w-full border border-gray-200 border-t-0">
             {week.map((date, dayIndex) => {
               const activities = getActivitiesForDate(date, teamData);
               const isToday = date.toDateString() === new Date().toDateString();
@@ -118,13 +160,15 @@ const WeeklyActivityGrid = ({ teamData }) => {
                       activities.map((userActivity, index) => (
                         <div 
                           key={index} 
-                          className="text-xs p-1 hover:bg-gray-100 rounded cursor-pointer border border-gray-100 relative group"
+                          className="text-xs p-1 hover:bg-gray-100 rounded cursor-pointer border border-gray-100 relative"
+                          onMouseEnter={(e) => handleMouseEnter(userActivity, e)}
+                          onMouseLeave={handleMouseLeave}
                         >
                           <div className="flex items-center gap-1 mb-1">
                             <img 
                               src={userActivity.avatar} 
                               alt={userActivity.username}
-                              className="w-6 h-6 rounded-full"
+                              className="w-4 h-4 rounded-full"
                             />
                             <span className="font-medium text-gray-800 text-xs">
                               {userActivity.initials}
@@ -132,23 +176,6 @@ const WeeklyActivityGrid = ({ teamData }) => {
                           </div>
                           <div className="text-orange-600 font-medium text-xs">
                             {userActivity.totalHours.toFixed(1)}h
-                          </div>
-                          
-                          {/* Detailed Tooltip */}
-                          <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-3 py-2 z-10 shadow-lg min-w-64 max-w-80">
-                            <div className="font-semibold mb-2 text-blue-300">{userActivity.username}</div>
-                            <div className="text-orange-300 font-semibold mb-2">Total: {userActivity.totalHours.toFixed(1)} hours</div>
-                            <div className="space-y-1 max-h-32 overflow-y-auto">
-                              {userActivity.activities.map((activity, actIndex) => (
-                                <div key={actIndex} className="border-b border-gray-600 pb-1 mb-1 last:border-b-0">
-                                  <div className="text-blue-300 font-mono">{activity.jiraNumber}</div>
-                                  <div className="text-white text-xs break-words">{activity.jiraDesc}</div>
-                                  <div className="text-gray-300 text-xs break-words">Log: {activity.logDesc}</div>
-                                  <div className="text-orange-300 text-xs font-semibold">{activity.hours}h</div>
-                                </div>
-                              ))}
-                            </div>
-                            <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                           </div>
                         </div>
                       ))
@@ -159,9 +186,37 @@ const WeeklyActivityGrid = ({ teamData }) => {
                 </div>
               );
             })}
+            </div>
           </div>
+        );
+      })}
+      
+      {/* Global Tooltip */}
+      {hoveredActivity && (
+        <div 
+          className="fixed bg-gray-900 text-white text-sm rounded-lg px-4 py-3 z-50 shadow-2xl border border-gray-700 w-96 max-h-80 overflow-y-auto pointer-events-none"
+          style={{
+            left: `${tooltipPosition.x}px`,
+            top: `${tooltipPosition.y}px`,
+            transform: 'translate(-50%, -100%)',
+            marginTop: '-8px'
+          }}
+        >
+          <div className="font-semibold mb-3 text-blue-300 text-base">{hoveredActivity.username}</div>
+          <div className="text-orange-300 font-semibold mb-3 text-sm">Total: {hoveredActivity.totalHours.toFixed(1)} hours</div>
+          <div className="space-y-3">
+            {hoveredActivity.activities.map((activity, actIndex) => (
+              <div key={actIndex} className="border-b border-gray-600 pb-2 mb-2 last:border-b-0 last:mb-0 last:pb-0">
+                <div className="text-blue-300 font-mono text-sm font-semibold">{activity.jiraNumber}</div>
+                <div className="text-white text-sm mt-1 leading-relaxed">{activity.jiraDesc}</div>
+                <div className="text-gray-300 text-sm mt-1 leading-relaxed">📝 {activity.logDesc}</div>
+                <div className="text-orange-300 text-sm font-semibold mt-1">⏰ {activity.hours}h</div>
+              </div>
+            ))}
+          </div>
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-gray-900"></div>
         </div>
-      ))}
+      )}
     </div>
   );
 };
