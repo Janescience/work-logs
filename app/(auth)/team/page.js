@@ -20,6 +20,7 @@ import { WorkCalendar } from '@/components/calendar';
 import { TeamSummary } from '@/components/dashboard';
 import { TeamTimeline } from '@/components/calendar';
 import { PageHeader, Button, Input, Select } from '@/components/ui';
+import { useWorkingDays } from '@/hooks/useWorkingDays';
 
 const getAvatarUrl = (username) => {
   if (!username) return 'https://placehold.co/40x40/e5e7eb/6b7280?text=NA';
@@ -29,6 +30,7 @@ const getAvatarUrl = (username) => {
 export default function MyTeamPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { getCurrentMonthWorkingDays, getWorkingDaysPassed } = useWorkingDays();
   
   const [team, setTeam] = useState(null);
   const [availableMembers, setAvailableMembers] = useState([]);
@@ -364,6 +366,56 @@ export default function MyTeamPage() {
     return `${project}\t${service}\t${jira.jiraNumber}\t${jira.description}\t${jiraStatus}\t${actualStatus}\t${totalHoursText}\t${dailyLogText}\t${deployDates}`;
   };
 
+  const calculateMemberStats = (jiras) => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    
+    // 1. เดือนปัจจุบันบันทึก log ไปแล้วกี่ log
+    const currentMonthLogs = jiras.reduce((total, jira) => {
+      if (jira.dailyLogs) {
+        const currentMonthLogCount = jira.dailyLogs.filter(log => {
+          const logDate = new Date(log.logDate);
+          return logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear;
+        }).length;
+        return total + currentMonthLogCount;
+      }
+      return total;
+    }, 0);
+    
+    // 2. ถือ jira อยู่ทั้งหมดกี่ jira ไม่นับอันที่ done
+    const activeJiras = jiras.filter(j => {
+      const status = (j.actualStatus || '').toLowerCase();
+      return !['done', 'closed', 'cancelled', 'deployed to production'].includes(status);
+    }).length;
+    
+    // 3. เดือนปัจจุบันทำไปแล้วกี่ชมจากกี่ชมที่ควรจะได้
+    const currentMonthHours = jiras.reduce((total, jira) => {
+      if (jira.dailyLogs) {
+        const currentMonthHours = jira.dailyLogs
+          .filter(log => {
+            const logDate = new Date(log.logDate);
+            return logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear;
+          })
+          .reduce((sum, log) => sum + parseFloat(log.timeSpent || 0), 0);
+        return total + currentMonthHours;
+      }
+      return total;
+    }, 0);
+    
+    const workingDaysPassed = getWorkingDaysPassed(true);
+    const expectedHours = workingDaysPassed * 8; // 8 ชั่วโมงต่อวัน
+    
+    return {
+      currentMonthLogs,
+      activeJiras,
+      currentMonthHours: Math.round(currentMonthHours * 10) / 10, // ปัดทศนิยม 1 ตำแหน่ง
+      expectedHours
+    };
+  };
+
   const handleCopyMemberSummary = async (userId, memberName, jiras) => {
     try {
       const filteredJiras = filterMemberJiras(jiras, userId);
@@ -548,41 +600,27 @@ export default function MyTeamPage() {
                             
                             {/* Task Status Row */}
                             <div className="mt-2 flex items-center gap-4 text-xs text-gray-600">
-                              {/* Active Tasks Count */}
-                              <span className="text-blue-600 font-medium">
-                                {jiras.filter(j => {
-                                  const status = (j.actualStatus || '').toLowerCase();
-                                  return !['done', 'closed', 'cancelled', 'deployed to production'].includes(status);
-                                }).length} active
-                              </span>
-                              
-                              {/* In Progress Count */}
-                              <span className="text-gray-600 font-medium">
-                                {jiras.filter(j => {
-                                  const status = (j.actualStatus || '').toLowerCase();
-                                  return status.includes('in progress') || status.includes('in-progress') || status.includes('progress');
-                                }).length} in progress
-                              </span>
-                              
-                              {/* Done Count */}
-                              <span className="text-green-600 font-medium">
-                                {jiras.filter(j => {
-                                  const status = (j.actualStatus || '').toLowerCase();
-                                  return status === 'done' || status === 'closed' || status === 'deployed to production';
-                                }).length} done
-                              </span>
-                              
-                              {/* Log Count */}
-                              <span className="text-gray-600">
-                                {jiras.reduce((total, jira) => total + (jira.dailyLogs ? jira.dailyLogs.length : 0), 0)} logs
-                              </span>
-                              
-                              {/* High Priority Alert */}
-                              {jiras.filter(j => j.priority === 'High' || j.priority === 'Highest').length > 0 && (
-                                <span className="text-red-600 font-medium">
-                                  {jiras.filter(j => j.priority === 'High' || j.priority === 'Highest').length} high priority
-                                </span>
-                              )}
+                              {(() => {
+                                const stats = calculateMemberStats(jiras);
+                                return (
+                                  <>
+                                    {/* Current Month Logs */}
+                                    <span className="text-purple-600 font-medium">
+                                      {stats.currentMonthLogs} logs this month
+                                    </span>
+                                    
+                                    {/* Active JIRAs */}
+                                    <span className="text-blue-600 font-medium">
+                                      {stats.activeJiras} active JIRAs
+                                    </span>
+                                    
+                                    {/* Current Month Hours */}
+                                    <span className={`font-medium ${stats.currentMonthHours >= stats.expectedHours ? 'text-green-600' : 'text-orange-600'}`}>
+                                      {stats.currentMonthHours}h / {stats.expectedHours}h this month
+                                    </span>
+                                  </>
+                                );
+                              })()}
                             </div>
                           </div>
                         </div>

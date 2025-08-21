@@ -374,7 +374,7 @@ export default function MyJiras({ userEmail, userName, userId, compact = false, 
     <div className="bg-white overflow-hidden border border-gray-300">
       {/* Component Title */}
       <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
-        <h3 className="text-sm font-medium text-black">
+        <h3 className="font-medium text-black">
           {readOnly && userName ? `${userName}'s JIRAs` : 'My JIRAs'}
         </h3>
       </div>
