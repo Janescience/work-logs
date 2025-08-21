@@ -112,14 +112,23 @@ const TeamSummary = ({ teamData }) => {
             });
           }
         } else {
-          // Check if completed this month
-          if (jira.updatedAt) {
-            const updatedDate = new Date(jira.updatedAt);
+          // Check if completed this month based on status
+          const actualStatus = (jira.actualStatus || '').toLowerCase();
+          const jiraStatus = (jira.jiraStatus || '').toLowerCase();
+          
+          const isCompletedStatus = actualStatus === 'done' || 
+                                  jiraStatus === 'done' || 
+                                  jiraStatus === 'closed' || 
+                                  jiraStatus === 'deployed to production';
+          
+          if (isCompletedStatus) {
+            // Check if it was updated/completed this month
+            const updatedDate = jira.updatedAt ? new Date(jira.updatedAt) : new Date(jira.createdAt);
             if (updatedDate.getMonth() === currentMonth && updatedDate.getFullYear() === currentYear) {
               totalCompletedThisMonth++;
               memberStats[memberInfo.username].completedThisMonth++;
             }
-          }
+          }ส
         }
 
         // Project stats
@@ -254,7 +263,7 @@ const TeamSummary = ({ teamData }) => {
         />
         <StatCard
           title="Hours This Month"
-          value={summary.totalLoggedHours.toFixed(0)}
+          value={`${summary.totalLoggedHours.toFixed(0)}h / ${summary.expectedHours}h`}
           subtitle={`${summary.utilizationRate.toFixed(0)}% utilization`}
         />
         <StatCard
