@@ -184,7 +184,7 @@ const LoggingTracker = ({ allJiras }) => {
     <div className="bg-white p-4 border border-gray-300">
       <h2 className="text-lg font-medium text-black mb-3 flex items-center">
         <FontAwesomeIcon icon={faCalendarCheck} className="mr-2 text-gray-600" />
-        Logging Tracker
+         Man Hour Tracker
       </h2>
 
       {/* Main Stats */}
