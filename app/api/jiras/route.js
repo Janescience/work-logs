@@ -20,19 +20,12 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const assignee = searchParams.get('assignee');
+    const userId = searchParams.get('userId');
     
-    let query = {};
-    
-    if (assignee) {
-      // If assignee is specified, filter by assignee email (for team lead viewing member's data)
-      query.assignee = assignee;
-    } else {
-      // Default behavior: filter by current user's userId
-      query.userId = session.user.id;
-    }
+    // Use provided userId or default to current session user
+    const targetUserId = userId || session.user.id;
 
-    const jiras = await Jira.find(query)
+    const jiras = await Jira.find({ userId: targetUserId })
       .populate({
         path: 'dailyLogs'
       })

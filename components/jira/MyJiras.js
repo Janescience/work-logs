@@ -42,7 +42,7 @@ const statusPriority = {
   'cancel': 15
 };
 
-export default function MyJiras({ userEmail, userName, compact = false, readOnly = false }) {
+export default function MyJiras({ userEmail, userName, userId, compact = false, readOnly = false }) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -62,7 +62,7 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
 
     try {
       // Fetch external JIRAs
-      console.log('🔍 Fetching JIRAs for email:', userEmail);
+      console.log('🔍 Fetching JIRAs for email:', userEmail, 'readOnly:', readOnly, 'userId:', userId);
       const externalRes = await fetch(`/api/my-jiras?email=${encodeURIComponent(userEmail)}`);
       console.log('📡 External API response status:', externalRes.status);
       
@@ -75,17 +75,20 @@ export default function MyJiras({ userEmail, userName, compact = false, readOnly
       console.log('📊 External API data:', externalData);
       console.log('📋 Issues found:', externalData.issues?.length || 0);
 
-      // Fetch internal JIRAs - filter by assignee if we're viewing someone else's data
-      const internalUrl = readOnly ? `/api/jiras?assignee=${encodeURIComponent(userEmail)}` : `/api/jiras`;
+      // Fetch internal JIRAs - use userId if available in readOnly mode
+      const internalUrl = readOnly && userId ? `/api/jiras?userId=${encodeURIComponent(userId)}` : `/api/jiras`;
+      console.log('🔗 Internal API URL:', internalUrl, 'userId:', userId);
       const internalRes = await fetch(internalUrl);
       if (!internalRes.ok) {
         const errorData = await internalRes.json();
         throw new Error(errorData.message || "Failed to load internal JIRA numbers");
       }
       const internalData = await internalRes.json();
+      console.log('📊 Internal API data:', internalData);
       
       setIssues(externalData.issues || []);
       const jiraNumbersFromInternalData = internalData.jiras ? internalData.jiras.map(jira => jira.jiraNumber) : [];
+      console.log('🎯 Internal JIRA numbers:', jiraNumbersFromInternalData);
       setInternalJiraNumbers(new Set(jiraNumbersFromInternalData));
     } catch (err) {
       console.error('💥 Error in fetchJiras:', err);

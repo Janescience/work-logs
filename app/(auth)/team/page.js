@@ -858,7 +858,7 @@ export default function MyTeamPage() {
                               </div>
                             )}
                             
-                            <MyJiras userEmail={memberInfo.email} userName={memberInfo.username} readOnly={true} />
+                            <MyJiras userEmail={memberInfo.email} userName={memberInfo.username} userId={memberInfo.userId} readOnly={true} />
                           </div>
                         </div>
                       )}
