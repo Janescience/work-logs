@@ -27,17 +27,50 @@ const getAvatarUrl = (username) => {
 const WeeklyActivityGrid = ({ teamData }) => {
   const [hoveredActivity, setHoveredActivity] = React.useState(null);
   const [tooltipPosition, setTooltipPosition] = React.useState({ x: 0, y: 0 });
+  const [isTooltipHovered, setIsTooltipHovered] = React.useState(false);
 
   const handleMouseEnter = (userActivity, event) => {
     const rect = event.currentTarget.getBoundingClientRect();
-    setTooltipPosition({
-      x: rect.left + rect.width / 2,
-      y: rect.top - 10
-    });
+    const tooltipWidth = 384; // w-96 = 384px
+    const tooltipHeight = 320; // max-h-80 = 320px
+    
+    // Calculate position with boundary detection
+    let x = rect.left + rect.width / 2;
+    let y = rect.top - 10;
+    let showBelow = false;
+    
+    // Adjust horizontal position if too close to edges
+    if (x - tooltipWidth / 2 < 10) {
+      x = tooltipWidth / 2 + 10; // Left edge
+    } else if (x + tooltipWidth / 2 > window.innerWidth - 10) {
+      x = window.innerWidth - tooltipWidth / 2 - 10; // Right edge
+    }
+    
+    // Adjust vertical position if too close to top
+    if (y - tooltipHeight < 10) {
+      y = rect.bottom + 10; // Show below instead
+      showBelow = true;
+    }
+    
+    setTooltipPosition({ x, y, showBelow });
     setHoveredActivity(userActivity);
   };
 
   const handleMouseLeave = () => {
+    // Only hide if not hovering tooltip
+    setTimeout(() => {
+      if (!isTooltipHovered) {
+        setHoveredActivity(null);
+      }
+    }, 100);
+  };
+
+  const handleTooltipMouseEnter = () => {
+    setIsTooltipHovered(true);
+  };
+
+  const handleTooltipMouseLeave = () => {
+    setIsTooltipHovered(false);
     setHoveredActivity(null);
   };
   // Generate 14 days ago to today
@@ -164,18 +197,20 @@ const WeeklyActivityGrid = ({ teamData }) => {
                           onMouseEnter={(e) => handleMouseEnter(userActivity, e)}
                           onMouseLeave={handleMouseLeave}
                         >
-                          <div className="flex items-center gap-1 mb-1">
-                            <img 
-                              src={userActivity.avatar} 
-                              alt={userActivity.username}
-                              className="w-4 h-4 rounded-full"
-                            />
-                            <span className="font-medium text-gray-800 text-xs">
-                              {userActivity.initials}
-                            </span>
-                          </div>
-                          <div className="text-orange-600 font-medium text-xs">
-                            {userActivity.totalHours.toFixed(1)}h
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1">
+                              <img 
+                                src={userActivity.avatar} 
+                                alt={userActivity.username}
+                                className="w-4 h-4 rounded-full"
+                              />
+                              <span className="font-medium text-gray-800 text-xs">
+                                {userActivity.initials}
+                              </span>
+                            </div>
+                            <div className="text-orange-600 font-medium text-xs">
+                              {userActivity.totalHours.toFixed(1)}h
+                            </div>
                           </div>
                         </div>
                       ))
@@ -194,13 +229,15 @@ const WeeklyActivityGrid = ({ teamData }) => {
       {/* Global Tooltip */}
       {hoveredActivity && (
         <div 
-          className="fixed bg-gray-900 text-white text-sm rounded-lg px-4 py-3 z-50 shadow-2xl border border-gray-700 w-96 max-h-80 overflow-y-auto pointer-events-none"
+          className="fixed bg-gray-900 text-white text-sm rounded-lg px-4 py-3 shadow-2xl border border-gray-700 w-96 max-h-80 overflow-y-auto cursor-default"
           style={{
             left: `${tooltipPosition.x}px`,
             top: `${tooltipPosition.y}px`,
-            transform: 'translate(-50%, -100%)',
-            marginTop: '-8px'
+            transform: tooltipPosition.showBelow ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
+            zIndex: 9999
           }}
+          onMouseEnter={handleTooltipMouseEnter}
+          onMouseLeave={handleTooltipMouseLeave}
         >
           <div className="font-semibold mb-3 text-blue-300 text-base">{hoveredActivity.username}</div>
           <div className="text-orange-300 font-semibold mb-3 text-sm">Total: {hoveredActivity.totalHours.toFixed(1)} hours</div>
