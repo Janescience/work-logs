@@ -42,9 +42,9 @@ const WeeklyActivityGrid = ({ teamData }) => {
     return username.split(' ').map(word => word.charAt(0).toUpperCase()).join('').slice(0, 2);
   };
 
-  // Get activities for a specific date
+  // Get activities for a specific date, grouped by user
   const getActivitiesForDate = (date, teamData) => {
-    const activities = [];
+    const userActivities = {};
     const dateStr = date.toDateString();
     
     Object.values(teamData).forEach(({ memberInfo, jiras }) => {
@@ -55,10 +55,20 @@ const WeeklyActivityGrid = ({ teamData }) => {
           jira.dailyLogs.forEach(log => {
             const logDate = new Date(log.logDate);
             if (logDate.toDateString() === dateStr) {
-              activities.push({
-                username: memberInfo.username,
-                initials: getInitials(memberInfo.username),
-                avatar: getAvatarUrl(memberInfo.username),
+              const username = memberInfo.username;
+              
+              if (!userActivities[username]) {
+                userActivities[username] = {
+                  username: memberInfo.username,
+                  initials: getInitials(memberInfo.username),
+                  avatar: getAvatarUrl(memberInfo.username),
+                  totalHours: 0,
+                  activities: []
+                };
+              }
+              
+              userActivities[username].totalHours += parseFloat(log.timeSpent || 0);
+              userActivities[username].activities.push({
                 jiraNumber: jira.jiraNumber,
                 jiraDesc: jira.description || 'No description',
                 logDesc: log.taskDescription || 'No description',
@@ -70,7 +80,7 @@ const WeeklyActivityGrid = ({ teamData }) => {
       });
     });
     
-    return activities;
+    return Object.values(userActivities);
   };
 
   const dates = getDatesArray();
@@ -102,39 +112,43 @@ const WeeklyActivityGrid = ({ teamData }) => {
                     </div>
                   </div>
                   
-                  {/* Activities */}
+                  {/* User Activities */}
                   <div className="space-y-1">
                     {activities.length > 0 ? (
-                      activities.map((activity, index) => (
+                      activities.map((userActivity, index) => (
                         <div 
                           key={index} 
                           className="text-xs p-1 hover:bg-gray-100 rounded cursor-pointer border border-gray-100 relative group"
                         >
                           <div className="flex items-center gap-1 mb-1">
                             <img 
-                              src={activity.avatar} 
-                              alt={activity.username}
-                              className="w-4 h-4 rounded-full"
+                              src={userActivity.avatar} 
+                              alt={userActivity.username}
+                              className="w-6 h-6 rounded-full"
                             />
                             <span className="font-medium text-gray-800 text-xs">
-                              {activity.initials}
+                              {userActivity.initials}
                             </span>
                           </div>
-                          <div className="text-blue-600 font-mono text-xs">
-                            {activity.jiraNumber}
-                          </div>
                           <div className="text-orange-600 font-medium text-xs">
-                            {activity.hours}h
+                            {userActivity.totalHours.toFixed(1)}h
                           </div>
                           
-                          {/* Tooltip */}
-                          <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10 shadow-lg">
-                            <div className="font-semibold">{activity.username}</div>
-                            <div className="text-blue-300">{activity.jiraNumber}</div>
-                            <div className="max-w-48 break-words">{activity.jiraDesc}</div>
-                            <div className="text-gray-300 max-w-48 break-words">Log: {activity.logDesc}</div>
-                            <div className="text-orange-300 font-semibold">{activity.hours} hours</div>
-                            <div className="absolute top-full left-2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                          {/* Detailed Tooltip */}
+                          <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-3 py-2 z-10 shadow-lg min-w-64 max-w-80">
+                            <div className="font-semibold mb-2 text-blue-300">{userActivity.username}</div>
+                            <div className="text-orange-300 font-semibold mb-2">Total: {userActivity.totalHours.toFixed(1)} hours</div>
+                            <div className="space-y-1 max-h-32 overflow-y-auto">
+                              {userActivity.activities.map((activity, actIndex) => (
+                                <div key={actIndex} className="border-b border-gray-600 pb-1 mb-1 last:border-b-0">
+                                  <div className="text-blue-300 font-mono">{activity.jiraNumber}</div>
+                                  <div className="text-white text-xs break-words">{activity.jiraDesc}</div>
+                                  <div className="text-gray-300 text-xs break-words">Log: {activity.logDesc}</div>
+                                  <div className="text-orange-300 text-xs font-semibold">{activity.hours}h</div>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                           </div>
                         </div>
                       ))
