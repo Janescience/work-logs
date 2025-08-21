@@ -56,12 +56,12 @@ export default function Home() {
           <div className="grid grid-cols-4 gap-4">
             <div className="col-span-3 row-span-3">
               <NeedAction allJiras={allJiras} />
+              <TaskTimeline allJiras={allJiras} className="mb-4"/>
               <MyJiras userEmail={session.user.email} />
-              <TaskTimeline allJiras={allJiras} />
             </div>
             <div className="overflow-y-auto">
-              <LoggingTracker allJiras={allJiras} />
-              <HolidaysDisplay />
+              <LoggingTracker allJiras={allJiras} className="mb-4"/>
+              <HolidaysDisplay className="mb-4"/>
               <RecentActivity allJiras={allJiras} />
             </div>
           </div>

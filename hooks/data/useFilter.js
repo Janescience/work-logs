@@ -220,17 +220,22 @@ export const useJiraFilter = (jiras = []) => {
         }
       };
       
-      // For date range filtering, only show JIRAs that have logs within the selected date range
-      // Don't show JIRAs that don't have any logs in the selected range
+      // Check if Jira was created within the date range
+      const jiraCreatedInRange = hasValidDate(jira.createdAt, range);
+      
+      // Check if Jira has daily logs within the date range
+      let hasLogsInRange = false;
       if (jira.dailyLogs && jira.dailyLogs.length > 0) {
-        const hasLogsInRange = jira.dailyLogs.some(log => hasValidDate(log.logDate, range));
-        console.log(`JIRA ${jira.jiraNumber}: has ${jira.dailyLogs.length} logs, has logs in ${range}:`, hasLogsInRange);
-        return hasLogsInRange;
+        hasLogsInRange = jira.dailyLogs.some(log => hasValidDate(log.logDate, range));
       }
       
-      // Don't show JIRAs without any daily logs when filtering by date range
-      console.log(`JIRA ${jira.jiraNumber}: no daily logs, filtering out`);
-      return false;
+      // Show JIRA if either:
+      // 1. It was created in the date range (includes newly synced JIRAs without logs)
+      // 2. It has daily logs within the date range
+      const shouldShow = jiraCreatedInRange || hasLogsInRange;
+      
+      console.log(`JIRA ${jira.jiraNumber}: createdAt in ${range}: ${jiraCreatedInRange}, has logs in range: ${hasLogsInRange}, should show: ${shouldShow}`);
+      return shouldShow;
     },
     
     searchFields: ['jiraNumber', 'description', 'projectName', 'serviceName', 'assignedTo']
