@@ -17,6 +17,7 @@ import {
   faHourglassHalf,
   faChartPie
 } from '@fortawesome/free-solid-svg-icons';
+import { useWorkingDays } from '@/hooks/useWorkingDays';
 
 const getAvatarUrl = (username) => {
   if (!username) return 'https://placehold.co/40x40/e5e7eb/6b7280?text=NA';
@@ -24,6 +25,16 @@ const getAvatarUrl = (username) => {
 };
 
 const TeamSummary = ({ teamData }) => {
+  const workingDaysHook = useWorkingDays();
+  
+  // Memoize working days calculation to prevent unnecessary re-renders
+  const workingDaysData = useMemo(() => {
+    return {
+      workingDays: workingDaysHook.getCurrentMonthWorkingDays(true),
+      workingDaysPassed: workingDaysHook.getWorkingDaysPassed(true)
+    };
+  }, [workingDaysHook.isLoading]);
+  
   const summary = useMemo(() => {
     if (!teamData || Object.keys(teamData).length === 0) {
       return null;
@@ -35,18 +46,8 @@ const TeamSummary = ({ teamData }) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Calculate working days in current month
-    const firstDay = new Date(currentYear, currentMonth, 1);
-    const lastDay = new Date(currentYear, currentMonth + 1, 0);
-    let workingDays = 0;
-    let workingDaysPassed = 0;
-    
-    for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
-      if (d.getDay() !== 0 && d.getDay() !== 6) {
-        workingDays++;
-        if (d <= today) workingDaysPassed++;
-      }
-    }
+    // Use memoized working days
+    const { workingDays, workingDaysPassed } = workingDaysData;
 
     // Initialize counters
     let totalLoggedHours = 0;
@@ -225,7 +226,7 @@ const TeamSummary = ({ teamData }) => {
       deploymentStats,
       memberStats: Object.values(memberStats)
     };
-  }, [teamData]);
+  }, [teamData, workingDaysData]);
 
   if (!summary) return null;
 

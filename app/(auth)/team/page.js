@@ -1,7 +1,7 @@
 // app/(auth)/team/page.js
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -64,9 +64,9 @@ export default function MyTeamPage() {
         fetchTeamAndMembers();
       }
     }
-  }, [status, session, router]);
+  }, [status]);
 
-  const fetchTeamAndMembers = async () => {
+  const fetchTeamAndMembers = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/team');
@@ -87,16 +87,19 @@ export default function MyTeamPage() {
         });
         setCollapsedMembers(initialCollapsed);
         
-        fetchTeamJiras();
+        // Only fetch jiras if we don't have team data yet
+        if (Object.keys(teamData).length === 0) {
+          fetchTeamJiras();
+        }
       }
     } catch (error) {
       toast.error(error.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [teamData]);
 
-  const fetchTeamJiras = async () => {
+  const fetchTeamJiras = useCallback(async () => {
     setLoadingData(true);
     try {
       const res = await fetch('/api/team/jiras');
@@ -109,7 +112,7 @@ export default function MyTeamPage() {
     } finally {
       setLoadingData(false);
     }
-  };
+  }, []);
 
   const handleMemberSelect = (memberId) => {
     setSelectedMembers(prev => {
@@ -169,7 +172,7 @@ export default function MyTeamPage() {
     }
   };
 
-  const getAllJirasForTimeline = () => {
+  const getAllJirasForTimeline = useMemo(() => {
     const allJiras = [];
     Object.values(teamData).forEach(userData => {
       if (userData.jiras) {
@@ -183,9 +186,9 @@ export default function MyTeamPage() {
       }
     });
     return allJiras;
-  };
+  }, [teamData]);
 
-  const getAllJirasFlat = () => {
+  const getAllJirasFlat = useMemo(() => {
     const allJiras = [];
     Object.values(teamData).forEach(userData => {
       if (userData.jiras) {
@@ -199,7 +202,7 @@ export default function MyTeamPage() {
       }
     });
     return allJiras;
-  };
+  }, [teamData]);
 
   // Initialize member table state
   const initializeMemberTableState = (userId) => {
@@ -511,7 +514,7 @@ export default function MyTeamPage() {
 
             {/* Timeline Tab */}
             {activeTab === 'timeline' && (
-              <TeamTimeline allJiras={getAllJirasForTimeline()} />
+              <TeamTimeline allJiras={getAllJirasForTimeline} />
             )}
 
             {/* Members Tab */}
