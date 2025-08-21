@@ -56,18 +56,17 @@ export default function Home() {
         <div className="p-4 ">
           
           {/* Top Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            <div className="col-span-2 h-full"><NeedAction allJiras={allJiras} /></div>
-            <div className="h-full"><LoggingTracker allJiras={allJiras} /></div>
-            <div className="h-full"><HolidaysDisplay /></div>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-4">
+            <div className="col-span-2 min-h-[400px] overflow-y-auto"><NeedAction allJiras={allJiras} /></div>
+            <div className="min-h-[400px] overflow-y-auto"><LoggingTracker allJiras={allJiras} /></div>
+            <div className="min-h-[400px] overflow-y-auto"><HolidaysDisplay /></div>
           </div>
 
           {/* Middle Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-            <div className="h-full col-span-2"><MyJiras userEmail={session.user.email} /></div>
-            <div className="h-full col-span-2"><TaskTimeline allJiras={allJiras} /></div>
-            <div className="h-full"><RecentActivity allJiras={allJiras} /></div>
-
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-4">
+            <div className="col-span-2 min-h-[400px] overflow-y-auto"><MyJiras userEmail={session.user.email} /></div>
+            <div className="col-span-2 min-h-[400px] overflow-y-auto"><TaskTimeline allJiras={allJiras} /></div>
+            <div className="min-h-[400px] overflow-y-auto"><RecentActivity allJiras={allJiras} /></div>
           </div>
 
           {/* Bottom Row */}
