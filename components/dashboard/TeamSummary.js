@@ -24,6 +24,127 @@ const getAvatarUrl = (username) => {
   return `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(username)}&size=40`;
 };
 
+const WeeklyActivityGrid = ({ teamData }) => {
+  // Generate 14 days ago to today
+  const getDatesArray = () => {
+    const dates = [];
+    for (let i = 13; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      dates.push(date);
+    }
+    return dates;
+  };
+
+  // Get initials from username
+  const getInitials = (username) => {
+    if (!username) return 'NA';
+    return username.split(' ').map(word => word.charAt(0).toUpperCase()).join('').slice(0, 2);
+  };
+
+  // Get activities for a specific date
+  const getActivitiesForDate = (date, teamData) => {
+    const activities = [];
+    const dateStr = date.toDateString();
+    
+    Object.values(teamData).forEach(({ memberInfo, jiras }) => {
+      if (!memberInfo || !jiras) return;
+      
+      jiras.forEach(jira => {
+        if (jira.dailyLogs && Array.isArray(jira.dailyLogs)) {
+          jira.dailyLogs.forEach(log => {
+            const logDate = new Date(log.logDate);
+            if (logDate.toDateString() === dateStr) {
+              activities.push({
+                username: memberInfo.username,
+                initials: getInitials(memberInfo.username),
+                avatar: getAvatarUrl(memberInfo.username),
+                jiraNumber: jira.jiraNumber,
+                jiraDesc: jira.description ? jira.description.slice(0, 15) + (jira.description.length > 15 ? '...' : '') : 'No description',
+                logDesc: log.description ? log.description.slice(0, 15) + (log.description.length > 15 ? '...' : '') : 'No description',
+                hours: parseFloat(log.timeSpent || 0)
+              });
+            }
+          });
+        }
+      });
+    });
+    
+    return activities;
+  };
+
+  const dates = getDatesArray();
+  const weeks = [dates.slice(0, 7), dates.slice(7, 14)];
+
+  return (
+    <div className="space-y-4">
+      {weeks.map((week, weekIndex) => (
+        <div key={weekIndex} className="overflow-x-auto">
+          <div className="grid grid-cols-7 gap-1 min-w-full">
+            {week.map((date, dayIndex) => {
+              const activities = getActivitiesForDate(date, teamData);
+              const isToday = date.toDateString() === new Date().toDateString();
+              
+              return (
+                <div 
+                  key={dayIndex}
+                  className={`border border-gray-200 min-h-[120px] p-2 text-xs ${
+                    isToday ? 'bg-blue-50 border-blue-300' : 'bg-white'
+                  }`}
+                >
+                  {/* Date Header */}
+                  <div className="text-center font-medium text-gray-700 mb-2">
+                    <div className="text-xs text-gray-500">
+                      {date.toLocaleDateString('en', { weekday: 'short' })}
+                    </div>
+                    <div className="text-sm">
+                      {date.getDate()}
+                    </div>
+                  </div>
+                  
+                  {/* Activities */}
+                  <div className="space-y-1">
+                    {activities.length > 0 ? (
+                      activities.map((activity, index) => (
+                        <div key={index} className="text-xs space-y-0.5">
+                          <div className="flex items-center gap-1">
+                            <img 
+                              src={activity.avatar} 
+                              alt={activity.username}
+                              className="w-3 h-3 rounded-full"
+                            />
+                            <span className="font-medium text-gray-800">
+                              {activity.initials}
+                            </span>
+                          </div>
+                          <div className="text-blue-600 font-mono">
+                            {activity.jiraNumber}
+                          </div>
+                          <div className="text-gray-700 truncate">
+                            {activity.jiraDesc}
+                          </div>
+                          <div className="text-gray-600 truncate">
+                            {activity.logDesc}
+                          </div>
+                          <div className="text-orange-600 font-medium">
+                            {activity.hours}h
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-gray-400 text-center mt-4">-</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const TeamSummary = ({ teamData }) => {
   const workingDaysHook = useWorkingDays();
   
@@ -379,7 +500,7 @@ const TeamSummary = ({ teamData }) => {
         </div>
         <div className="p-4">
           <div className="space-y-3">
-            {summary.topProjects.slice(0, 5).map(project => (
+            {summary.topProjects.map(project => (
               <div key={project.name}>
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-sm font-medium text-black truncate">{project.name}</span>
@@ -401,6 +522,16 @@ const TeamSummary = ({ teamData }) => {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Weekly Activity */}
+      <div className="bg-white border border-gray-200">
+        <div className="p-4 border-b border-gray-200">
+          <h3 className="text-base font-medium text-black">Team Weekly Activity (Last 14 Days)</h3>
+        </div>
+        <div className="p-4">
+          <WeeklyActivityGrid teamData={teamData} />
         </div>
       </div>
 
