@@ -280,6 +280,7 @@ const TeamSummary = ({ teamData }) => {
     let inProgressTasks = [];
     let readyForDeployTasks = [];
     const taskStatusDistribution = {};
+    const memberLastLogDates = {};
 
     // Process all team data
     Object.values(teamData).forEach(({ memberInfo, jiras }) => {
@@ -293,6 +294,9 @@ const TeamSummary = ({ teamData }) => {
         hoursThisMonth: 0,
         hoursThisWeek: 0
       };
+
+      // Initialize last log date tracking
+      memberLastLogDates[memberInfo.username] = null;
 
       jiras.forEach(jira => {
         const isActive = !['done', 'closed', 'cancelled', 'deployed'].some(s => 
@@ -373,6 +377,11 @@ const TeamSummary = ({ teamData }) => {
             const logDate = new Date(log.logDate);
             const hours = parseFloat(log.timeSpent || 0);
             
+            // Track latest log date for each member
+            if (!memberLastLogDates[memberInfo.username] || logDate > memberLastLogDates[memberInfo.username]) {
+              memberLastLogDates[memberInfo.username] = logDate;
+            }
+
             // This month's hours
             if (logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear) {
               totalLoggedHours += hours;
@@ -428,9 +437,11 @@ const TeamSummary = ({ teamData }) => {
       .sort((a, b) => b.hoursThisMonth - a.hoursThisMonth);
     
     const topProjects = Object.values(projectStats)
+      .filter(project => project.activeTasks > 0)
       .sort((a, b) => b.activeTasks - a.activeTasks);
     
     const topServices = Object.values(serviceStats)
+      .filter(service => service.activeTasks > 0)
       .sort((a, b) => b.activeTasks - a.activeTasks);
 
     blockedTasks.sort((a, b) => b.daysSinceUpdate - a.daysSinceUpdate);
@@ -438,6 +449,35 @@ const TeamSummary = ({ teamData }) => {
     // Get top status categories
     const statusCategories = Object.entries(taskStatusDistribution)
       .sort(([,a], [,b]) => b - a);
+
+    // Find members who haven't logged for 3+ working days
+    const inactiveMembers = [];
+    Object.entries(memberLastLogDates).forEach(([username, lastLogDate]) => {
+      if (!lastLogDate) {
+        // Never logged
+        inactiveMembers.push({
+          username,
+          daysSinceLastLog: 'Never',
+          lastLogDate: null
+        });
+      } else {
+        const workingDaysSince = workingDaysHook.getWorkingDaysBetween(lastLogDate, today);
+        if (workingDaysSince >= 3) {
+          inactiveMembers.push({
+            username,
+            daysSinceLastLog: workingDaysSince,
+            lastLogDate
+          });
+        }
+      }
+    });
+
+    // Sort by days since last log (descending)
+    inactiveMembers.sort((a, b) => {
+      if (a.daysSinceLastLog === 'Never') return -1;
+      if (b.daysSinceLastLog === 'Never') return 1;
+      return b.daysSinceLastLog - a.daysSinceLastLog;
+    });
 
     return {
       teamSize,
@@ -461,7 +501,8 @@ const TeamSummary = ({ teamData }) => {
       topProjects,
       topServices,
       deploymentStats,
-      memberStats: Object.values(memberStats)
+      memberStats: Object.values(memberStats),
+      inactiveMembers
     };
   }, [teamData, workingDaysData]);
 
@@ -666,6 +707,57 @@ const TeamSummary = ({ teamData }) => {
           </div>
         </div>
       </div>
+
+      {/* Inactive Members Alert */}
+      {summary.inactiveMembers.length > 0 && (
+        <div className="bg-orange-50 border border-orange-200">
+          <div className="p-4 border-b border-orange-200">
+            <h3 className="text-base font-medium text-orange-800 flex items-center">
+              <span className="w-2 h-2 bg-orange-500 rounded-full mr-2"></span>
+              Inactive Members Alert ({summary.inactiveMembers.length})
+            </h3>
+          </div>
+          <div className="p-4">
+            <div className="space-y-3">
+              {summary.inactiveMembers.map(member => (
+                <div key={member.username} className="flex items-center justify-between p-3 bg-white border border-orange-200 rounded">
+                  <div className="flex items-center gap-3">
+                    <Avatar
+                      username={member.username}
+                      size={32}
+                      className="w-8 h-8"
+                    />
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{member.username}</div>
+                      <div className="text-xs text-gray-500">
+                        {member.lastLogDate 
+                          ? `Last log: ${member.lastLogDate.toLocaleDateString('en-GB')}`
+                          : 'No logs found'
+                        }
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className={`text-sm font-medium ${
+                      member.daysSinceLastLog === 'Never' 
+                        ? 'text-red-600' 
+                        : member.daysSinceLastLog >= 5 
+                          ? 'text-red-600' 
+                          : 'text-orange-600'
+                    }`}>
+                      {member.daysSinceLastLog === 'Never' 
+                        ? 'Never logged' 
+                        : `${member.daysSinceLastLog} working days`
+                      }
+                    </div>
+                    <div className="text-xs text-gray-500">since last log</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Weekly Activity */}
       <div className="bg-white border border-gray-200">
