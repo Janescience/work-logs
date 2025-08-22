@@ -547,15 +547,17 @@ const ProjectTimeline = ({ allJiras }) => {
                           />
                         )}
                         <div className="flex-1 min-w-0">
-                          <div className="font-mono text-sm text-blue-600">{jira.jiraNumber}</div>
-                          <div className="text-xs text-gray-600">{jira.description}</div>
-                          <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center gap-2">
+                            <div className="font-mono text-sm text-blue-600">{jira.jiraNumber}</div>
                             {/* JIRA Status */}
                             {jira.jiraStatus && (
                               <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 rounded">
                                 {jira.jiraStatus}
                               </span>
                             )}
+                          </div>
+                          <div className="text-xs text-gray-600">{jira.description}</div>
+                          <div className="flex items-center gap-2 mt-1">
                             {/* Show assignee only for project view */}
                             {viewMode === 'project' && (
                               <span className="text-xs text-gray-500">{jira.assignee}</span>
