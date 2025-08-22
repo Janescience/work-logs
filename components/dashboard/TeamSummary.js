@@ -461,7 +461,7 @@ const TeamSummary = ({ teamData }) => {
           lastLogDate: null
         });
       } else {
-        const workingDaysSince = workingDaysHook.getWorkingDaysBetween(lastLogDate, today);
+        const workingDaysSince = workingDaysHook.getWorkingDaysBetweenDates(lastLogDate, today, true);
         if (workingDaysSince >= 3) {
           inactiveMembers.push({
             username,
