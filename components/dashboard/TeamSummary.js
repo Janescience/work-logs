@@ -1,7 +1,7 @@
 // components/TeamSummary.js
 'use client';
 
-import React, { useMemo,useState } from 'react';
+import React, { useMemo,useState,useEffect } from 'react';
 import { useWorkingDays } from '@/hooks/useWorkingDays';
 import { Avatar } from '@/components/ui';
 
