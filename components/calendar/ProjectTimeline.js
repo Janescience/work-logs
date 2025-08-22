@@ -414,13 +414,37 @@ const ProjectTimeline = ({ allJiras }) => {
                   
                   {/* Group span indicator */}
                   {group.earliestDeployment && group.latestDeployment && (
-                    <div 
-                      className="absolute h-2 bg-gray-300 rounded top-3"
-                      style={{
-                        left: `${getDeploymentPosition(group.earliestDeployment, timelineData.timelineStart, timelineData.timelineEnd)}%`,
-                        width: `${getDeploymentPosition(group.latestDeployment, timelineData.timelineStart, timelineData.timelineEnd) - getDeploymentPosition(group.earliestDeployment, timelineData.timelineStart, timelineData.timelineEnd)}%`
-                      }}
-                    ></div>
+                    <>
+                      <div 
+                        className="absolute h-2 bg-gray-300 rounded top-3"
+                        style={{
+                          left: `${getDeploymentPosition(group.earliestDeployment, timelineData.timelineStart, timelineData.timelineEnd)}%`,
+                          width: `${getDeploymentPosition(group.latestDeployment, timelineData.timelineStart, timelineData.timelineEnd) - getDeploymentPosition(group.earliestDeployment, timelineData.timelineStart, timelineData.timelineEnd)}%`
+                        }}
+                      ></div>
+                      {/* Start date */}
+                      <div
+                        className="absolute text-xs text-gray-600 font-medium"
+                        style={{
+                          left: `${getDeploymentPosition(group.earliestDeployment, timelineData.timelineStart, timelineData.timelineEnd)}%`,
+                          top: '20px',
+                          transform: 'translateX(-50%)'
+                        }}
+                      >
+                        {new Date(group.earliestDeployment).getDate()}
+                      </div>
+                      {/* End date */}
+                      <div
+                        className="absolute text-xs text-gray-600 font-medium"
+                        style={{
+                          left: `${getDeploymentPosition(group.latestDeployment, timelineData.timelineStart, timelineData.timelineEnd)}%`,
+                          top: '20px',
+                          transform: 'translateX(-50%)'
+                        }}
+                      >
+                        {new Date(group.latestDeployment).getDate()}
+                      </div>
+                    </>
                   )}
                   
                   {/* Current date indicator */}
