@@ -388,7 +388,7 @@ const ProjectTimeline = ({ allJiras }) => {
                           { stage: 'prod', date: jira.deployProdDate, label: 'PROD' }
                         ].map(deployment => {
                           if (!deployment.date) return null;
-                          const position = getDeploymentPosition(deployment.date, projectData.timelineStart, projectData.timelineEnd);
+                          const position = getDeploymentPosition(deployment.date, timelineData.timelineStart, timelineData.timelineEnd);
                           return (
                             <div
                               key={deployment.stage}
