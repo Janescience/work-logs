@@ -269,6 +269,7 @@ const TeamSummary = ({ teamData }) => {
     let totalLoggedHoursThisWeek = 0;
     const memberStats = {};
     const projectStats = {};
+    const serviceStats = {};
     const deploymentStats = {
       thisMonth: { sit: 0, uat: 0, preprod: 0, prod: 0 },
       nextMonth: { sit: 0, uat: 0, preprod: 0, prod: 0 }
@@ -356,6 +357,16 @@ const TeamSummary = ({ teamData }) => {
           if (isActive) projectStats[jira.projectName].activeTasks++;
         }
 
+        // Service stats
+        if (jira.serviceName) {
+          serviceStats[jira.serviceName] = serviceStats[jira.serviceName] || {
+            name: jira.serviceName,
+            activeTasks: 0,
+            totalHours: 0
+          };
+          if (isActive) serviceStats[jira.serviceName].activeTasks++;
+        }
+
         // Process daily logs
         if (jira.dailyLogs && Array.isArray(jira.dailyLogs)) {
           jira.dailyLogs.forEach(log => {
@@ -367,6 +378,7 @@ const TeamSummary = ({ teamData }) => {
               totalLoggedHours += hours;
               memberStats[memberInfo.username].hoursThisMonth += hours;
               if (jira.projectName) projectStats[jira.projectName].totalHours += hours;
+              if (jira.serviceName) serviceStats[jira.serviceName].totalHours += hours;
             }
             
             // This week's hours
@@ -413,19 +425,19 @@ const TeamSummary = ({ teamData }) => {
 
     // Sort data
     const topContributors = Object.values(memberStats)
-      .sort((a, b) => b.hoursThisMonth - a.hoursThisMonth)
-      .slice(0, 5);
+      .sort((a, b) => b.hoursThisMonth - a.hoursThisMonth);
     
     const topProjects = Object.values(projectStats)
-      .sort((a, b) => b.activeTasks - a.activeTasks)
-      .slice(0, 5);
+      .sort((a, b) => b.activeTasks - a.activeTasks);
+    
+    const topServices = Object.values(serviceStats)
+      .sort((a, b) => b.activeTasks - a.activeTasks);
 
     blockedTasks.sort((a, b) => b.daysSinceUpdate - a.daysSinceUpdate);
 
     // Get top status categories
     const statusCategories = Object.entries(taskStatusDistribution)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 5);
+      .sort(([,a], [,b]) => b - a);
 
     return {
       teamSize,
@@ -447,6 +459,7 @@ const TeamSummary = ({ teamData }) => {
       statusCategories,
       topContributors,
       topProjects,
+      topServices,
       deploymentStats,
       memberStats: Object.values(memberStats)
     };
@@ -587,34 +600,69 @@ const TeamSummary = ({ teamData }) => {
         </div>
       </div>
 
-      {/* Active Projects */}
-      <div className="bg-white border border-gray-200">
-        <div className="p-4 border-b border-gray-200">
-          <h3 className="text-base font-medium text-black">Active Projects</h3>
-        </div>
-        <div className="p-4">
-          <div className="space-y-3">
-            {summary.topProjects.map(project => (
-              <div key={project.name}>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm font-medium text-black truncate">{project.name}</span>
-                  <span className="text-sm font-medium">{project.activeTasks} tasks</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-gray-200 h-2">
-                    <div 
-                      className="bg-black h-2" 
-                      style={{ 
-                        width: `${(project.activeTasks / summary.totalActiveTasks) * 100}%` 
-                      }}
-                    />
+      {/* Active Projects & Services */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Active Projects */}
+        <div className="bg-white border border-gray-200">
+          <div className="p-4 border-b border-gray-200">
+            <h3 className="text-base font-medium text-black">Active Projects</h3>
+          </div>
+          <div className="p-4">
+            <div className="space-y-3">
+              {summary.topProjects.map(project => (
+                <div key={project.name}>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm font-medium text-black truncate">{project.name}</span>
+                    <span className="text-sm font-medium">{project.activeTasks} tasks</span>
                   </div>
-                  <span className="text-xs text-gray-500 w-12 text-right">
-                    {project.totalHours > 0 ? `${project.totalHours.toFixed(0)}h` : ''}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-gray-200 h-2">
+                      <div 
+                        className="bg-black h-2" 
+                        style={{ 
+                          width: `${(project.activeTasks / summary.totalActiveTasks) * 100}%` 
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-500 w-12 text-right">
+                      {project.totalHours > 0 ? `${project.totalHours.toFixed(0)}h` : ''}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Active Services */}
+        <div className="bg-white border border-gray-200">
+          <div className="p-4 border-b border-gray-200">
+            <h3 className="text-base font-medium text-black">Active Services</h3>
+          </div>
+          <div className="p-4">
+            <div className="space-y-3">
+              {summary.topServices.map(service => (
+                <div key={service.name}>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm font-medium text-black truncate">{service.name}</span>
+                    <span className="text-sm font-medium">{service.activeTasks} tasks</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-gray-200 h-2">
+                      <div 
+                        className="bg-gray-600 h-2" 
+                        style={{ 
+                          width: `${(service.activeTasks / summary.totalActiveTasks) * 100}%` 
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-500 w-12 text-right">
+                      {service.totalHours > 0 ? `${service.totalHours.toFixed(0)}h` : ''}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
