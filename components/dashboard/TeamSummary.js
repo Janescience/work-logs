@@ -249,6 +249,71 @@ const TeamSummary = ({ teamData }) => {
       workingDaysPassed: workingDaysHook.getWorkingDaysPassed(true)
     };
   }, [workingDaysHook.isLoading]);
+
+  // New JIRAs this month state
+  const [newJirasThisMonth, setNewJirasThisMonth] = useState([]);
+  const [loadingNewJiras, setLoadingNewJiras] = useState(false);
+
+  // Fetch new JIRAs for all team members
+  useEffect(() => {
+    const fetchNewJiras = async () => {
+      if (!teamData || Object.keys(teamData).length === 0) return;
+      
+      setLoadingNewJiras(true);
+      const today = new Date();
+      const currentMonth = today.getMonth();
+      const currentYear = today.getFullYear();
+      const newJiras = [];
+
+      try {
+        // Get all team member emails
+        const teamMembers = Object.values(teamData)
+          .map(({ memberInfo }) => memberInfo)
+          .filter(Boolean);
+
+        // Fetch JIRAs for each team member
+        for (const member of teamMembers) {
+          try {
+            const response = await fetch(`/api/my-jiras?email=${encodeURIComponent(member.email)}`);
+            if (response.ok) {
+              const data = await response.json();
+              const issues = data.issues || [];
+              
+              // Filter JIRAs created this month
+              const thisMonthJiras = issues.filter(issue => {
+                if (!issue.fields?.created) return false;
+                const createdDate = new Date(issue.fields.created);
+                return createdDate.getMonth() === currentMonth && 
+                       createdDate.getFullYear() === currentYear;
+              });
+
+              // Add member info to each JIRA
+              thisMonthJiras.forEach(jira => {
+                newJiras.push({
+                  ...jira,
+                  memberName: member.name || member.username,
+                  memberEmail: member.email,
+                  createdDate: new Date(jira.fields.created)
+                });
+              });
+            }
+          } catch (error) {
+            console.error(`Failed to fetch JIRAs for ${member.email}:`, error);
+          }
+        }
+
+        // Sort by created date (newest first)
+        newJiras.sort((a, b) => b.createdDate - a.createdDate);
+        setNewJirasThisMonth(newJiras);
+      } catch (error) {
+        console.error('Error fetching new JIRAs:', error);
+      } finally {
+        setLoadingNewJiras(false);
+      }
+    };
+
+    fetchNewJiras();
+  }, [teamData]);
   
   const summary = useMemo(() => {
     if (!teamData || Object.keys(teamData).length === 0) {
@@ -281,6 +346,7 @@ const TeamSummary = ({ teamData }) => {
     let readyForDeployTasks = [];
     const taskStatusDistribution = {};
     const memberLastLogDates = {};
+    const newJirasThisMonth = [];
 
     // Process all team data
     Object.values(teamData).forEach(({ memberInfo, jiras }) => {
@@ -610,33 +676,94 @@ const TeamSummary = ({ teamData }) => {
         </div>
       </div>
 
-      {/* Top Contributors */}
-      <div className="bg-white border border-gray-200">
-        <div className="p-4 border-b border-gray-200">
-          <h3 className="text-base font-medium text-black">Top Contributors This Month</h3>
-        </div>
-        <div className="p-4">
-          <div className="space-y-3">
-            {summary.topContributors.slice(0, 5).map((member, index) => (
-              <div key={member.username} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-lg font-light text-gray-500 w-6">{index + 1}</span>
-                  <Avatar
-                    username={member.username}
-                    size={32}
-                    className="w-8 h-8"
-                  />
-                  <div>
-                    <div className="text-sm font-medium text-black">{member.username}</div>
-                    <div className="text-xs text-gray-500">{member.activeTasks} active tasks</div>
+      {/* Top Contributors & Inactive Members */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Top Contributors */}
+        <div className="bg-white border border-gray-200">
+          <div className="p-4 border-b border-gray-200">
+            <h3 className="text-base font-medium text-black">Top Contributors This Month</h3>
+          </div>
+          <div className="p-4">
+            <div className="space-y-3">
+              {summary.topContributors.slice(0, 5).map((member, index) => (
+                <div key={member.username} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg font-light text-gray-500 w-6">{index + 1}</span>
+                    <Avatar
+                      username={member.username}
+                      size={32}
+                      className="w-8 h-8"
+                    />
+                    <div>
+                      <div className="text-sm font-medium text-black">{member.username}</div>
+                      <div className="text-xs text-gray-500">{member.activeTasks} active tasks</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-medium text-black">{member.hoursThisMonth.toFixed(0)}h</div>
+                    <div className="text-xs text-gray-500">{member.hoursThisWeek.toFixed(0)}h this week</div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm font-medium text-black">{member.hoursThisMonth.toFixed(0)}h</div>
-                  <div className="text-xs text-gray-500">{member.hoursThisWeek.toFixed(0)}h this week</div>
-                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Inactive Members Alert */}
+        <div className={`border border-gray-200 ${summary.inactiveMembers.length > 0 ? 'bg-orange-50 border-orange-200' : 'bg-white'}`}>
+          <div className={`p-4 border-b ${summary.inactiveMembers.length > 0 ? 'border-orange-200' : 'border-gray-200'}`}>
+            <h3 className={`text-base font-medium flex items-center ${summary.inactiveMembers.length > 0 ? 'text-orange-800' : 'text-black'}`}>
+              {summary.inactiveMembers.length > 0 && (
+                <span className="w-2 h-2 bg-orange-500 rounded-full mr-2"></span>
+              )}
+              Inactive Members {summary.inactiveMembers.length > 0 && `(${summary.inactiveMembers.length})`}
+            </h3>
+          </div>
+          <div className="p-4">
+            {summary.inactiveMembers.length > 0 ? (
+              <div className="space-y-3">
+                {summary.inactiveMembers.map(member => (
+                  <div key={member.username} className="flex items-center justify-between p-3 bg-white border border-orange-200 rounded">
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        username={member.username}
+                        size={32}
+                        className="w-8 h-8"
+                      />
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{member.username}</div>
+                        <div className="text-xs text-gray-500">
+                          {member.lastLogDate 
+                            ? `Last log: ${member.lastLogDate.toLocaleDateString('en-GB')}`
+                            : 'No logs found'
+                          }
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`text-sm font-medium ${
+                        member.daysSinceLastLog === 'Never' 
+                          ? 'text-red-600' 
+                          : member.daysSinceLastLog >= 5 
+                            ? 'text-red-600' 
+                            : 'text-orange-600'
+                      }`}>
+                        {member.daysSinceLastLog === 'Never' 
+                          ? 'Never logged' 
+                          : `${member.daysSinceLastLog} working days`
+                        }
+                      </div>
+                      <div className="text-xs text-gray-500">since last log</div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="text-center py-6 text-gray-500">
+                <div className="text-sm">All team members are active!</div>
+                <div className="text-xs mt-1">Everyone has logged within the last 3 working days</div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -708,56 +835,65 @@ const TeamSummary = ({ teamData }) => {
         </div>
       </div>
 
-      {/* Inactive Members Alert */}
-      {summary.inactiveMembers.length > 0 && (
-        <div className="bg-orange-50 border border-orange-200">
-          <div className="p-4 border-b border-orange-200">
-            <h3 className="text-base font-medium text-orange-800 flex items-center">
-              <span className="w-2 h-2 bg-orange-500 rounded-full mr-2"></span>
-              Inactive Members Alert ({summary.inactiveMembers.length})
-            </h3>
-          </div>
-          <div className="p-4">
-            <div className="space-y-3">
-              {summary.inactiveMembers.map(member => (
-                <div key={member.username} className="flex items-center justify-between p-3 bg-white border border-orange-200 rounded">
-                  <div className="flex items-center gap-3">
+
+      {/* New JIRAs This Month */}
+      <div className={`border border-gray-200 ${newJirasThisMonth.length > 0 ? 'bg-blue-50 border-blue-200' : 'bg-white'}`}>
+        <div className={`p-4 border-b ${newJirasThisMonth.length > 0 ? 'border-blue-200' : 'border-gray-200'}`}>
+          <h3 className={`text-base font-medium flex items-center ${newJirasThisMonth.length > 0 ? 'text-blue-800' : 'text-black'}`}>
+            {newJirasThisMonth.length > 0 && (
+              <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+            )}
+            New JIRAs This Month {newJirasThisMonth.length > 0 && `(${newJirasThisMonth.length})`}
+            {loadingNewJiras && (
+              <span className="ml-2 text-sm text-gray-500">Loading...</span>
+            )}
+          </h3>
+        </div>
+        <div className="p-4">
+          {loadingNewJiras ? (
+            <div className="text-center py-6 text-gray-500">
+              <div className="text-sm">Loading new JIRAs...</div>
+            </div>
+          ) : newJirasThisMonth.length > 0 ? (
+            <div className="space-y-3 max-h-60 overflow-y-auto">
+              {newJirasThisMonth.slice(0, 10).map(jira => (
+                <div key={jira.key} className="flex items-center justify-between p-3 bg-white border border-blue-200 rounded">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
                     <Avatar
-                      username={member.username}
+                      username={jira.memberName}
                       size={32}
-                      className="w-8 h-8"
+                      className="w-8 h-8 flex-shrink-0"
                     />
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{member.username}</div>
-                      <div className="text-xs text-gray-500">
-                        {member.lastLogDate 
-                          ? `Last log: ${member.lastLogDate.toLocaleDateString('en-GB')}`
-                          : 'No logs found'
-                        }
-                      </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-mono text-sm text-blue-600">{jira.key}</div>
+                      <div className="text-xs text-gray-600 truncate">{jira.fields.summary}</div>
+                      <div className="text-xs text-gray-500">{jira.memberName}</div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className={`text-sm font-medium ${
-                      member.daysSinceLastLog === 'Never' 
-                        ? 'text-red-600' 
-                        : member.daysSinceLastLog >= 5 
-                          ? 'text-red-600' 
-                          : 'text-orange-600'
-                    }`}>
-                      {member.daysSinceLastLog === 'Never' 
-                        ? 'Never logged' 
-                        : `${member.daysSinceLastLog} working days`
-                      }
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-sm font-medium text-gray-900">
+                      {jira.createdDate.toLocaleDateString('en-GB')}
                     </div>
-                    <div className="text-xs text-gray-500">since last log</div>
+                    <div className="text-xs text-gray-500">
+                      {jira.fields.status?.name || 'No Status'}
+                    </div>
                   </div>
                 </div>
               ))}
+              {newJirasThisMonth.length > 10 && (
+                <div className="text-center py-2 text-sm text-gray-500">
+                  and {newJirasThisMonth.length - 10} more...
+                </div>
+              )}
             </div>
-          </div>
+          ) : (
+            <div className="text-center py-6 text-gray-500">
+              <div className="text-sm">No new JIRAs this month</div>
+              <div className="text-xs mt-1">All caught up!</div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Weekly Activity */}
       <div className="bg-white border border-gray-200">
