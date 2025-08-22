@@ -290,11 +290,17 @@ const ProjectTimeline = ({ allJiras }) => {
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-gray-900">{group.name}</div>
-                        <div className="text-sm text-gray-500">
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
                           {viewMode === 'jira' ? (
                             <>
                               <span className="text-blue-600">{group.assignee}</span>
                               {group.projectName && <span> • {group.projectName}</span>}
+                              {/* JIRA Status for jira view */}
+                              {group.jiras[0] && (group.jiras[0].actualStatus || group.jiras[0].jiraStatus) && (
+                                <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 rounded ml-2">
+                                  {group.jiras[0].actualStatus || group.jiras[0].jiraStatus}
+                                </span>
+                              )}
                             </>
                           ) : (
                             `${group.totalJiras} Active JIRA${group.totalJiras !== 1 ? 's' : ''}`
@@ -449,14 +455,22 @@ const ProjectTimeline = ({ allJiras }) => {
                         <div className="flex-1 min-w-0">
                           <div className="font-mono text-sm text-blue-600">{jira.jiraNumber}</div>
                           <div className="text-xs text-gray-600">{jira.description}</div>
-                          {/* Show assignee only for project view */}
-                          {viewMode === 'project' && (
-                            <div className="text-xs text-gray-500">{jira.assignee}</div>
-                          )}
-                          {/* Show project name for member view */}
-                          {viewMode === 'member' && jira.projectName && (
-                            <div className="text-xs text-gray-500">{jira.projectName}</div>
-                          )}
+                          <div className="flex items-center gap-2 mt-1">
+                            {/* JIRA Status */}
+                            {(jira.actualStatus || jira.jiraStatus) && (
+                              <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 rounded">
+                                {jira.actualStatus || jira.jiraStatus}
+                              </span>
+                            )}
+                            {/* Show assignee only for project view */}
+                            {viewMode === 'project' && (
+                              <span className="text-xs text-gray-500">{jira.assignee}</span>
+                            )}
+                            {/* Show project name for member view */}
+                            {viewMode === 'member' && jira.projectName && (
+                              <span className="text-xs text-gray-500">{jira.projectName}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
