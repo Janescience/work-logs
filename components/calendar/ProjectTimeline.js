@@ -296,9 +296,9 @@ const ProjectTimeline = ({ allJiras }) => {
                               <span className="text-blue-600">{group.assignee}</span>
                               {group.projectName && <span> • {group.projectName}</span>}
                               {/* JIRA Status for jira view */}
-                              {group.jiras[0] && (group.jiras[0].actualStatus || group.jiras[0].jiraStatus) && (
+                              {group.jiras[0] && group.jiras[0].jiraStatus && (
                                 <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 rounded ml-2">
-                                  {group.jiras[0].actualStatus || group.jiras[0].jiraStatus}
+                                  {group.jiras[0].jiraStatus}
                                 </span>
                               )}
                             </>
@@ -457,9 +457,9 @@ const ProjectTimeline = ({ allJiras }) => {
                           <div className="text-xs text-gray-600">{jira.description}</div>
                           <div className="flex items-center gap-2 mt-1">
                             {/* JIRA Status */}
-                            {(jira.actualStatus || jira.jiraStatus) && (
+                            {jira.jiraStatus && (
                               <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 rounded">
-                                {jira.actualStatus || jira.jiraStatus}
+                                {jira.jiraStatus}
                               </span>
                             )}
                             {/* Show assignee only for project view */}
