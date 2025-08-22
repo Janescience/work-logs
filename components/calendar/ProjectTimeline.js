@@ -141,35 +141,36 @@ const ProjectTimeline = ({ allJiras }) => {
       current.setMonth(current.getMonth() + 1);
     }
 
-    // Generate weeks
-    const weekCurrent = new Date(startDate);
-    weekCurrent.setDate(1); // Start from first day of start month
-    
-    while (weekCurrent <= endDate) {
-      // Find Monday of current week
-      const mondayOfWeek = new Date(weekCurrent);
-      const dayOfWeek = mondayOfWeek.getDay();
-      const diff = mondayOfWeek.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-      mondayOfWeek.setDate(diff);
+    // Generate weeks within each month
+    timelineMonths.forEach(month => {
+      const monthStart = new Date(month.year, month.month, 1);
+      const monthEnd = new Date(month.year, month.month + 1, 0);
+      let weekInMonth = 1;
       
-      if (mondayOfWeek >= startDate && mondayOfWeek <= endDate) {
-        timelineWeeks.push({
-          date: new Date(mondayOfWeek),
-          weekNumber: getWeekNumber(mondayOfWeek)
-        });
+      // Start from first Monday of the month or the first day if no Monday before
+      const current = new Date(monthStart);
+      
+      while (current <= monthEnd) {
+        // Find Monday of current week
+        const mondayOfWeek = new Date(current);
+        const dayOfWeek = mondayOfWeek.getDay();
+        const diff = mondayOfWeek.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+        mondayOfWeek.setDate(diff);
+        
+        // Only add if Monday is within our timeline range and within the month bounds
+        if (mondayOfWeek >= startDate && mondayOfWeek <= endDate && mondayOfWeek.getMonth() === month.month) {
+          timelineWeeks.push({
+            date: new Date(mondayOfWeek),
+            weekNumber: weekInMonth,
+            monthYear: `${month.year}-${month.month}`
+          });
+          weekInMonth++;
+        }
+        
+        // Move to next week
+        current.setDate(current.getDate() + 7);
       }
-      
-      // Move to next week
-      weekCurrent.setDate(weekCurrent.getDate() + 7);
-    }
-
-    function getWeekNumber(date) {
-      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-      const dayNum = d.getUTCDay() || 7;
-      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-      const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-      return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
-    }
+    });
 
     return {
       groups: Object.values(groups).sort((a, b) => b.totalJiras - a.totalJiras),
@@ -298,7 +299,7 @@ const ProjectTimeline = ({ allJiras }) => {
             </div>
             
             {/* Week indicators */}
-            <div className="flex text-xs text-gray-500 pt-1" style={{ height: '20px' }}>
+            <div className="relative text-xs text-gray-500 pt-1" style={{ height: '20px' }}>
               {timelineData.timelineWeeks.map((week, index) => {
                 const position = getDeploymentPosition(week.date, timelineData.timelineStart, timelineData.timelineEnd);
                 return (
