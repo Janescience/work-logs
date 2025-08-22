@@ -18,7 +18,7 @@ import { toast } from 'react-toastify';
 import { MyJiras } from '@/components/jira';
 import { WorkCalendar } from '@/components/calendar';
 import { TeamSummary } from '@/components/dashboard';
-import { TeamTimeline } from '@/components/calendar';
+import { TeamTimeline, ProjectTimeline } from '@/components/calendar';
 import { PageHeader, Button, Input, Select, Avatar } from '@/components/ui';
 import { useWorkingDays } from '@/hooks/useWorkingDays';
 
@@ -561,7 +561,7 @@ export default function MyTeamPage() {
 
             {/* Timeline Tab */}
             {activeTab === 'timeline' && (
-              <TeamTimeline allJiras={getAllJirasForTimeline} />
+              <ProjectTimeline allJiras={getAllJirasForTimeline} />
             )}
 
             {/* Members Tab */}
