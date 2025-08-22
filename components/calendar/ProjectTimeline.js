@@ -25,8 +25,21 @@ const ProjectTimeline = ({ allJiras }) => {
     let earliestDate = new Date();
     let latestDate = new Date();
 
-    // Group jiras by project
+    // Group jiras by project (filter out completed ones)
     allJiras.forEach(jira => {
+      const actualStatus = (jira.actualStatus || '').toLowerCase();
+      const jiraStatus = (jira.jiraStatus || '').toLowerCase();
+      
+      // Skip completed/closed jiras
+      if (actualStatus === 'done' || 
+          jiraStatus === 'done' || 
+          jiraStatus === 'closed' || 
+          jiraStatus === 'cancel' || 
+          jiraStatus === 'cancelled' ||
+          jiraStatus === 'deployed to production') {
+        return;
+      }
+
       const projectName = jira.projectName || 'Unassigned Project';
       
       if (!projects[projectName]) {
@@ -43,11 +56,8 @@ const ProjectTimeline = ({ allJiras }) => {
       projects[projectName].jiras.push(jira);
       projects[projectName].totalJiras++;
 
-      // Check if completed
-      const status = (jira.actualStatus || '').toLowerCase();
-      if (status === 'done' || status === 'closed' || status === 'deployed') {
-        projects[projectName].completedJiras++;
-      }
+      // Since we're filtering out completed ones above, we don't need this check anymore
+      // All remaining jiras are active
 
       // Track deployment dates for timeline calculation
       const deploymentDates = [
@@ -188,8 +198,7 @@ const ProjectTimeline = ({ allJiras }) => {
                       <div>
                         <div className="font-medium text-gray-900 truncate">{project.name}</div>
                         <div className="text-sm text-gray-500">
-                          {project.totalJiras} JIRAs 
-                          {project.completedJiras > 0 && ` (${project.completedJiras} completed)`}
+                          {project.totalJiras} Active JIRAs
                         </div>
                       </div>
                     </div>
