@@ -15,46 +15,86 @@ import { Avatar } from '@/components/ui';
 
 const ProjectTimeline = ({ allJiras }) => {
   const [expandedProjects, setExpandedProjects] = useState({});
+  const [viewMode, setViewMode] = useState('project'); // 'project', 'jira', 'member'
 
-  // Group jiras by project and calculate timeline data
-  const projectData = useMemo(() => {
+  // Group jiras by different criteria based on view mode
+  const timelineData = useMemo(() => {
     if (!allJiras || allJiras.length === 0) return [];
 
-    const projects = {};
+    const groups = {};
     const today = new Date();
     let earliestDate = new Date();
     let latestDate = new Date();
 
-    // Group jiras by project (filter out completed ones)
-    allJiras.forEach(jira => {
+    // Filter out completed jiras first
+    const activeJiras = allJiras.filter(jira => {
       const actualStatus = (jira.actualStatus || '').toLowerCase();
       const jiraStatus = (jira.jiraStatus || '').toLowerCase();
       
-      // Skip completed/closed jiras
-      if (actualStatus === 'done' || 
-          jiraStatus === 'done' || 
-          jiraStatus === 'closed' || 
-          jiraStatus === 'cancel' || 
-          jiraStatus === 'cancelled' ||
-          jiraStatus === 'deployed to production') {
-        return;
-      }
+      return !(actualStatus === 'done' || 
+               jiraStatus === 'done' || 
+               jiraStatus === 'closed' || 
+               jiraStatus === 'cancel' || 
+               jiraStatus === 'cancelled' ||
+               jiraStatus === 'deployed to production');
+    });
 
-      const projectName = jira.projectName || 'Unassigned Project';
+    // Group jiras based on view mode
+    activeJiras.forEach(jira => {
+      let groupKey, groupData;
+
+      switch (viewMode) {
+        case 'project':
+          groupKey = jira.projectName || 'Unassigned Project';
+          groupData = {
+            name: groupKey,
+            type: 'project',
+            jiras: [],
+            totalJiras: 0,
+            earliestDeployment: null,
+            latestDeployment: null
+          };
+          break;
+        
+        case 'member':
+          groupKey = jira.assignee || 'Unassigned';
+          groupData = {
+            name: groupKey,
+            type: 'member',
+            jiras: [],
+            totalJiras: 0,
+            earliestDeployment: null,
+            latestDeployment: null
+          };
+          break;
+        
+        case 'jira':
+          // For jira view, each jira is its own group
+          groupKey = jira.jiraNumber || `${jira._id}`;
+          groupData = {
+            name: `${jira.jiraNumber} - ${jira.description?.substring(0, 50)}...`,
+            type: 'jira',
+            assignee: jira.assignee,
+            projectName: jira.projectName,
+            jiras: [jira],
+            totalJiras: 1,
+            earliestDeployment: null,
+            latestDeployment: null
+          };
+          break;
+        
+        default:
+          return;
+      }
       
-      if (!projects[projectName]) {
-        projects[projectName] = {
-          name: projectName,
-          jiras: [],
-          totalJiras: 0,
-          completedJiras: 0,
-          earliestDeployment: null,
-          latestDeployment: null
-        };
+      if (!groups[groupKey]) {
+        groups[groupKey] = groupData;
       }
 
-      projects[projectName].jiras.push(jira);
-      projects[projectName].totalJiras++;
+      if (viewMode !== 'jira') {
+        groups[groupKey].jiras.push(jira);
+        groups[groupKey].totalJiras++;
+      }
 
       // Since we're filtering out completed ones above, we don't need this check anymore
       // All remaining jiras are active
@@ -71,11 +111,11 @@ const ProjectTimeline = ({ allJiras }) => {
         if (date < earliestDate) earliestDate = date;
         if (date > latestDate) latestDate = date;
         
-        if (!projects[projectName].earliestDeployment || date < projects[projectName].earliestDeployment) {
-          projects[projectName].earliestDeployment = date;
+        if (!groups[groupKey].earliestDeployment || date < groups[groupKey].earliestDeployment) {
+          groups[groupKey].earliestDeployment = date;
         }
-        if (!projects[projectName].latestDeployment || date > projects[projectName].latestDeployment) {
-          projects[projectName].latestDeployment = date;
+        if (!groups[groupKey].latestDeployment || date > groups[groupKey].latestDeployment) {
+          groups[groupKey].latestDeployment = date;
         }
       });
     });
@@ -100,18 +140,37 @@ const ProjectTimeline = ({ allJiras }) => {
     }
 
     return {
-      projects: Object.values(projects).sort((a, b) => b.totalJiras - a.totalJiras),
+      groups: Object.values(groups).sort((a, b) => b.totalJiras - a.totalJiras),
       timelineMonths,
       timelineStart: startDate,
-      timelineEnd: endDate
+      timelineEnd: endDate,
+      viewMode
     };
-  }, [allJiras]);
+  }, [allJiras, viewMode]);
 
-  const toggleProject = (projectName) => {
+  const toggleGroup = (groupKey) => {
     setExpandedProjects(prev => ({
       ...prev,
-      [projectName]: !prev[projectName]
+      [groupKey]: !prev[groupKey]
     }));
+  };
+
+  const getGroupIcon = (type) => {
+    switch (type) {
+      case 'project': return faProjectDiagram;
+      case 'member': return faTasks;
+      case 'jira': return faCircle;
+      default: return faProjectDiagram;
+    }
+  };
+
+  const getViewModeLabel = () => {
+    switch (viewMode) {
+      case 'project': return 'Projects & JIRAs';
+      case 'member': return 'Members & JIRAs';
+      case 'jira': return 'Individual JIRAs';
+      default: return 'Items';
+    }
   };
 
   const getDeploymentPosition = (date, timelineStart, timelineEnd) => {
@@ -132,37 +191,55 @@ const ProjectTimeline = ({ allJiras }) => {
     return colors[stage] || 'bg-gray-500';
   };
 
-  if (!projectData.projects || projectData.projects.length === 0) {
+  if (!timelineData.groups || timelineData.groups.length === 0) {
     return (
       <div className="text-center py-12 text-gray-500">
         <FontAwesomeIcon icon={faProjectDiagram} className="text-4xl mb-4" />
-        <p>No projects with deployment timeline found</p>
+        <p>No active items with deployment timeline found</p>
       </div>
     );
   }
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      {/* Header */}
+      {/* Header with View Mode Selector */}
       <div className="p-4 border-b border-gray-200 bg-gray-50">
-        <h3 className="text-lg font-medium text-gray-900 flex items-center">
-          <FontAwesomeIcon icon={faCalendarAlt} className="mr-2 text-gray-500" />
-          Project Deployment Timeline
-        </h3>
-        <p className="text-sm text-gray-600 mt-1">
-          Timeline showing deployment schedules across {projectData.projects.length} projects
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 flex items-center">
+              <FontAwesomeIcon icon={faCalendarAlt} className="mr-2 text-gray-500" />
+              Deployment Timeline
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Timeline showing deployment schedules across {timelineData.groups.length} {viewMode === 'project' ? 'projects' : viewMode === 'member' ? 'members' : 'JIRAs'}
+            </p>
+          </div>
+          
+          {/* View Mode Selector */}
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">View by:</label>
+            <select
+              value={viewMode}
+              onChange={(e) => setViewMode(e.target.value)}
+              className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="project">Project</option>
+              <option value="member">Member</option>
+              <option value="jira">Individual JIRA</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Timeline Header */}
       <div className="flex border-b border-gray-200">
         <div className="w-80 p-4 bg-gray-50 border-r border-gray-200">
-          <h4 className="font-medium text-gray-700">Projects & JIRAs</h4>
+          <h4 className="font-medium text-gray-700">{getViewModeLabel()}</h4>
         </div>
         <div className="flex-1 p-4 bg-gray-50">
           <h4 className="font-medium text-gray-700">Deployment Timeline</h4>
           <div className="flex mt-2 text-xs">
-            {projectData.timelineMonths.map((month, index) => (
+            {timelineData.timelineMonths.map((month, index) => (
               <div 
                 key={`${month.year}-${month.month}`}
                 className={`flex-1 text-center px-1 py-1 ${
@@ -177,28 +254,47 @@ const ProjectTimeline = ({ allJiras }) => {
         </div>
       </div>
 
-      {/* Projects List with Timeline */}
+      {/* Groups List with Timeline */}
       <div className="max-h-[600px] overflow-y-auto">
-        {projectData.projects.map((project, projectIndex) => (
-          <div key={project.name} className={projectIndex > 0 ? 'border-t border-gray-100' : ''}>
-            {/* Project Header */}
+        {timelineData.groups.map((group, groupIndex) => (
+          <div key={group.name} className={groupIndex > 0 ? 'border-t border-gray-100' : ''}>
+            {/* Group Header */}
             <div className="flex">
               <div className="w-80 border-r border-gray-200">
                 <button
-                  onClick={() => toggleProject(project.name)}
+                  onClick={() => toggleGroup(group.name)}
                   className="w-full p-4 text-left hover:bg-gray-50 transition-colors"
+                  disabled={viewMode === 'jira'} // Disable expand for jira view
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <FontAwesomeIcon 
-                        icon={expandedProjects[project.name] ? faChevronDown : faChevronRight}
-                        className="text-gray-400 mr-2"
-                      />
-                      <FontAwesomeIcon icon={faProjectDiagram} className="text-gray-500 mr-2" />
+                      {viewMode !== 'jira' && (
+                        <FontAwesomeIcon 
+                          icon={expandedProjects[group.name] ? faChevronDown : faChevronRight}
+                          className="text-gray-400 mr-2"
+                        />
+                      )}
+                      {viewMode === 'member' && (
+                        <Avatar
+                          username={group.name}
+                          size={20}
+                          className="w-5 h-5 mr-2"
+                        />
+                      )}
+                      {viewMode !== 'member' && (
+                        <FontAwesomeIcon icon={getGroupIcon(group.type)} className="text-gray-500 mr-2" />
+                      )}
                       <div>
-                        <div className="font-medium text-gray-900 truncate">{project.name}</div>
+                        <div className="font-medium text-gray-900 truncate">{group.name}</div>
                         <div className="text-sm text-gray-500">
-                          {project.totalJiras} Active JIRAs
+                          {viewMode === 'jira' ? (
+                            <>
+                              <span className="text-blue-600">{group.assignee}</span>
+                              {group.projectName && <span> • {group.projectName}</span>}
+                            </>
+                          ) : (
+                            `${group.totalJiras} Active JIRA${group.totalJiras !== 1 ? 's' : ''}`
+                          )}
                         </div>
                       </div>
                     </div>
@@ -206,19 +302,19 @@ const ProjectTimeline = ({ allJiras }) => {
                 </button>
               </div>
               
-              {/* Project Timeline */}
+              {/* Group Timeline */}
               <div className="flex-1 p-4 relative">
                 <div className="relative h-8">
                   {/* Timeline background */}
                   <div className="absolute inset-0 bg-gray-100 rounded"></div>
                   
-                  {/* Project span indicator */}
-                  {project.earliestDeployment && project.latestDeployment && (
+                  {/* Group span indicator */}
+                  {group.earliestDeployment && group.latestDeployment && (
                     <div 
                       className="absolute h-2 bg-gray-300 rounded top-3"
                       style={{
-                        left: `${getDeploymentPosition(project.earliestDeployment, projectData.timelineStart, projectData.timelineEnd)}%`,
-                        width: `${getDeploymentPosition(project.latestDeployment, projectData.timelineStart, projectData.timelineEnd) - getDeploymentPosition(project.earliestDeployment, projectData.timelineStart, projectData.timelineEnd)}%`
+                        left: `${getDeploymentPosition(group.earliestDeployment, timelineData.timelineStart, timelineData.timelineEnd)}%`,
+                        width: `${getDeploymentPosition(group.latestDeployment, timelineData.timelineStart, timelineData.timelineEnd) - getDeploymentPosition(group.earliestDeployment, timelineData.timelineStart, timelineData.timelineEnd)}%`
                       }}
                     ></div>
                   )}
@@ -227,17 +323,44 @@ const ProjectTimeline = ({ allJiras }) => {
                   <div 
                     className="absolute w-0.5 h-full bg-red-500 z-10"
                     style={{
-                      left: `${getDeploymentPosition(new Date(), projectData.timelineStart, projectData.timelineEnd)}%`
+                      left: `${getDeploymentPosition(new Date(), timelineData.timelineStart, timelineData.timelineEnd)}%`
                     }}
                   ></div>
+
+                  {/* For jira view, show deployment markers directly */}
+                  {viewMode === 'jira' && group.jiras[0] && (
+                    <>
+                      {[
+                        { stage: 'sit', date: group.jiras[0].deploySitDate, label: 'SIT' },
+                        { stage: 'uat', date: group.jiras[0].deployUatDate, label: 'UAT' },
+                        { stage: 'preprod', date: group.jiras[0].deployPreprodDate, label: 'PRE' },
+                        { stage: 'prod', date: group.jiras[0].deployProdDate, label: 'PROD' }
+                      ].map(deployment => {
+                        if (!deployment.date) return null;
+                        const position = getDeploymentPosition(deployment.date, timelineData.timelineStart, timelineData.timelineEnd);
+                        return (
+                          <div
+                            key={deployment.stage}
+                            className="absolute flex flex-col items-center"
+                            style={{ left: `${position}%`, transform: 'translateX(-50%)', top: '8px' }}
+                          >
+                            <div 
+                              className={`w-3 h-3 rounded-full ${getDeploymentColor(deployment.stage)} border-2 border-white shadow`}
+                              title={`${deployment.label}: ${new Date(deployment.date).toLocaleDateString('en-GB')}`}
+                            ></div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Expanded JIRAs */}
-            {expandedProjects[project.name] && (
+            {/* Expanded JIRAs (only for project and member views) */}
+            {expandedProjects[group.name] && viewMode !== 'jira' && (
               <div className="bg-gray-50">
-                {project.jiras.map((jira, jiraIndex) => (
+                {group.jiras.map((jira, jiraIndex) => (
                   <div key={jira._id || jiraIndex} className="flex border-t border-gray-100">
                     <div className="w-80 border-r border-gray-200 p-3 pl-8">
                       <div className="flex items-center">
