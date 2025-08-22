@@ -716,7 +716,7 @@ const TeamSummary = ({ teamData }) => {
               {summary.inactiveMembers.length > 0 && (
                 <span className="w-2 h-2 bg-orange-500 rounded-full mr-2"></span>
               )}
-              Inactive Members {summary.inactiveMembers.length > 0 && `(${summary.inactiveMembers.length})`}
+              Members Not Logging {summary.inactiveMembers.length > 0 && `(${summary.inactiveMembers.length})`}
             </h3>
           </div>
           <div className="p-4">
@@ -773,7 +773,7 @@ const TeamSummary = ({ teamData }) => {
         {/* Active Projects */}
         <div className="bg-white border border-gray-200">
           <div className="p-4 border-b border-gray-200">
-            <h3 className="text-base font-medium text-black">Active Projects</h3>
+            <h3 className="text-base font-medium text-black">Active Projects by Tasks</h3>
           </div>
           <div className="p-4">
             <div className="space-y-3">
@@ -805,7 +805,7 @@ const TeamSummary = ({ teamData }) => {
         {/* Active Services */}
         <div className="bg-white border border-gray-200">
           <div className="p-4 border-b border-gray-200">
-            <h3 className="text-base font-medium text-black">Active Services</h3>
+            <h3 className="text-base font-medium text-black">Active Services by Tasks</h3>
           </div>
           <div className="p-4">
             <div className="space-y-3">
@@ -898,7 +898,7 @@ const TeamSummary = ({ teamData }) => {
       {/* Weekly Activity */}
       <div className="bg-white border border-gray-200">
         <div className="p-4 border-b border-gray-200">
-          <h3 className="text-base font-medium text-black">Team Weekly Activity (Last 14 Days)</h3>
+          <h3 className="text-base font-medium text-black">Team Activity Grid (Last 14 Working Days)</h3>
         </div>
         <div className="p-4">
           <WeeklyActivityGrid teamData={teamData} />

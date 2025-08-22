@@ -120,14 +120,16 @@ const ProjectTimeline = ({ allJiras }) => {
       });
     });
 
-    // Generate timeline months
+    // Generate timeline with months and weeks
     const timelineMonths = [];
+    const timelineWeeks = [];
     const startDate = new Date(Math.min(earliestDate, today));
     startDate.setDate(1); // Start of month
     
     const endDate = new Date(Math.max(latestDate, today));
     endDate.setMonth(endDate.getMonth() + 3); // Add 3 months buffer
     
+    // Generate months
     const current = new Date(startDate);
     while (current <= endDate) {
       timelineMonths.push({
@@ -139,9 +141,40 @@ const ProjectTimeline = ({ allJiras }) => {
       current.setMonth(current.getMonth() + 1);
     }
 
+    // Generate weeks
+    const weekCurrent = new Date(startDate);
+    weekCurrent.setDate(1); // Start from first day of start month
+    
+    while (weekCurrent <= endDate) {
+      // Find Monday of current week
+      const mondayOfWeek = new Date(weekCurrent);
+      const dayOfWeek = mondayOfWeek.getDay();
+      const diff = mondayOfWeek.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      mondayOfWeek.setDate(diff);
+      
+      if (mondayOfWeek >= startDate && mondayOfWeek <= endDate) {
+        timelineWeeks.push({
+          date: new Date(mondayOfWeek),
+          weekNumber: getWeekNumber(mondayOfWeek)
+        });
+      }
+      
+      // Move to next week
+      weekCurrent.setDate(weekCurrent.getDate() + 7);
+    }
+
+    function getWeekNumber(date) {
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+      return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+    }
+
     return {
       groups: Object.values(groups).sort((a, b) => b.totalJiras - a.totalJiras),
       timelineMonths,
+      timelineWeeks,
       timelineStart: startDate,
       timelineEnd: endDate,
       viewMode
@@ -242,18 +275,47 @@ const ProjectTimeline = ({ allJiras }) => {
         </div>
         <div className="flex-1 p-4 bg-gray-50">
           <h4 className="font-medium text-gray-700">Deployment Timeline</h4>
-          <div className="flex mt-2 text-xs">
-            {timelineData.timelineMonths.map((month, index) => (
-              <div 
-                key={`${month.year}-${month.month}`}
-                className={`flex-1 text-center px-1 py-1 ${
-                  month.isCurrentMonth ? 'bg-blue-100 text-blue-700 font-medium rounded' : 'text-gray-600'
-                }`}
-                style={{ minWidth: '80px' }}
-              >
-                {month.monthName}
-              </div>
-            ))}
+          <div className="mt-2 min-w-[800px] overflow-x-auto">
+            {/* Month headers */}
+            <div className="flex text-xs border-b border-gray-200 pb-1">
+              {timelineData.timelineMonths.map((month, index) => {
+                const monthStart = new Date(month.year, month.month, 1);
+                const nextMonth = new Date(month.year, month.month + 1, 1);
+                const monthWidth = ((nextMonth - monthStart) / (timelineData.timelineEnd - timelineData.timelineStart)) * 100;
+                
+                return (
+                  <div 
+                    key={`${month.year}-${month.month}`}
+                    className={`text-center px-1 py-1 border-r border-gray-200 ${
+                      month.isCurrentMonth ? 'bg-blue-100 text-blue-700 font-medium rounded-sm' : 'text-gray-600'
+                    }`}
+                    style={{ width: `${monthWidth}%`, minWidth: '60px' }}
+                  >
+                    {month.monthName}
+                  </div>
+                );
+              })}
+            </div>
+            
+            {/* Week indicators */}
+            <div className="flex text-xs text-gray-500 pt-1" style={{ height: '20px' }}>
+              {timelineData.timelineWeeks.map((week, index) => {
+                const position = getDeploymentPosition(week.date, timelineData.timelineStart, timelineData.timelineEnd);
+                return (
+                  <div
+                    key={`week-header-${index}`}
+                    className="absolute text-center"
+                    style={{ 
+                      left: `${position}%`, 
+                      transform: 'translateX(-50%)',
+                      fontSize: '10px'
+                    }}
+                  >
+                    W{week.weekNumber}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -314,9 +376,24 @@ const ProjectTimeline = ({ allJiras }) => {
               
               {/* Group Timeline */}
               <div className="flex-1 p-4 relative overflow-x-auto">
-                <div className="relative h-8 min-w-[600px]">
+                <div className="relative h-8 min-w-[800px]">
                   {/* Timeline background */}
                   <div className="absolute inset-0 bg-gray-100 rounded"></div>
+                  
+                  {/* Week dividers */}
+                  {timelineData.timelineWeeks.map((week, index) => {
+                    const position = getDeploymentPosition(week.date, timelineData.timelineStart, timelineData.timelineEnd);
+                    return (
+                      <div
+                        key={`week-${index}`}
+                        className="absolute w-px h-full bg-gray-300 opacity-25"
+                        style={{
+                          left: `${position}%`
+                        }}
+                        title={`Week ${week.weekNumber}: ${week.date.toLocaleDateString('en-GB')}`}
+                      ></div>
+                    );
+                  })}
                   
                   {/* Month dividers */}
                   {timelineData.timelineMonths.map((month, index) => {
@@ -326,7 +403,7 @@ const ProjectTimeline = ({ allJiras }) => {
                     return (
                       <div
                         key={`divider-${month.year}-${month.month}`}
-                        className="absolute w-px h-full bg-gray-300 opacity-50"
+                        className="absolute w-px h-full bg-gray-400 opacity-70"
                         style={{
                           left: `${position}%`
                         }}
@@ -493,7 +570,21 @@ const ProjectTimeline = ({ allJiras }) => {
                     
                     {/* JIRA Timeline */}
                     <div className="flex-1 p-3 relative overflow-x-auto">
-                      <div className="relative h-6 min-w-[600px]">
+                      <div className="relative h-6 min-w-[800px]">
+                        {/* Week dividers for JIRA level */}
+                        {timelineData.timelineWeeks.map((week, index) => {
+                          const position = getDeploymentPosition(week.date, timelineData.timelineStart, timelineData.timelineEnd);
+                          return (
+                            <div
+                              key={`jira-week-${index}`}
+                              className="absolute w-px h-full bg-gray-300 opacity-20"
+                              style={{
+                                left: `${position}%`
+                              }}
+                            ></div>
+                          );
+                        })}
+                        
                         {/* Month dividers for JIRA level */}
                         {timelineData.timelineMonths.map((month, index) => {
                           if (index === 0) return null; // Skip first month
@@ -502,7 +593,7 @@ const ProjectTimeline = ({ allJiras }) => {
                           return (
                             <div
                               key={`jira-divider-${month.year}-${month.month}`}
-                              className="absolute w-px h-full bg-gray-300 opacity-30"
+                              className="absolute w-px h-full bg-gray-400 opacity-50"
                               style={{
                                 left: `${position}%`
                               }}
