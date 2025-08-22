@@ -191,6 +191,10 @@ const ProjectTimeline = ({ allJiras }) => {
     return colors[stage] || 'bg-gray-500';
   };
 
+  const hasDeploymentDates = (jira) => {
+    return !!(jira.deploySitDate || jira.deployUatDate || jira.deployPreprodDate || jira.deployProdDate);
+  };
+
   if (!timelineData.groups || timelineData.groups.length === 0) {
     return (
       <div className="text-center py-12 text-gray-500">
@@ -266,26 +270,26 @@ const ProjectTimeline = ({ allJiras }) => {
                   className="w-full p-4 text-left hover:bg-gray-50 transition-colors"
                   disabled={viewMode === 'jira'} // Disable expand for jira view
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
+                  <div className="flex items-center justify-between min-w-0">
+                    <div className="flex items-center min-w-0 flex-1">
                       {viewMode !== 'jira' && (
                         <FontAwesomeIcon 
                           icon={expandedProjects[group.name] ? faChevronDown : faChevronRight}
-                          className="text-gray-400 mr-2"
+                          className="text-gray-400 mr-2 flex-shrink-0"
                         />
                       )}
                       {viewMode === 'member' && (
                         <Avatar
                           username={group.name}
                           size={20}
-                          className="w-5 h-5 mr-2"
+                          className="w-5 h-5 mr-2 flex-shrink-0"
                         />
                       )}
                       {viewMode !== 'member' && (
-                        <FontAwesomeIcon icon={getGroupIcon(group.type)} className="text-gray-500 mr-2" />
+                        <FontAwesomeIcon icon={getGroupIcon(group.type)} className="text-gray-500 mr-2 flex-shrink-0" />
                       )}
-                      <div>
-                        <div className="font-medium text-gray-900 truncate">{group.name}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900">{group.name}</div>
                         <div className="text-sm text-gray-500">
                           {viewMode === 'jira' ? (
                             <>
@@ -303,8 +307,8 @@ const ProjectTimeline = ({ allJiras }) => {
               </div>
               
               {/* Group Timeline */}
-              <div className="flex-1 p-4 relative">
-                <div className="relative h-8">
+              <div className="flex-1 p-4 relative overflow-x-auto">
+                <div className="relative h-8 min-w-[600px]">
                   {/* Timeline background */}
                   <div className="absolute inset-0 bg-gray-100 rounded"></div>
                   
@@ -343,54 +347,84 @@ const ProjectTimeline = ({ allJiras }) => {
                     }}
                   ></div>
 
-                  {/* For jira view, show deployment markers directly */}
+                  {/* For jira view, show deployment markers or daily logs */}
                   {viewMode === 'jira' && group.jiras[0] && (
                     <>
-                      {(() => {
-                        const deployments = [
-                          { stage: 'sit', date: group.jiras[0].deploySitDate, label: 'SIT' },
-                          { stage: 'uat', date: group.jiras[0].deployUatDate, label: 'UAT' },
-                          { stage: 'preprod', date: group.jiras[0].deployPreprodDate, label: 'PRE' },
-                          { stage: 'prod', date: group.jiras[0].deployProdDate, label: 'PROD' }
-                        ].filter(deployment => deployment.date);
+                      {hasDeploymentDates(group.jiras[0]) ? (
+                        // Show deployment markers
+                        (() => {
+                          const deployments = [
+                            { stage: 'sit', date: group.jiras[0].deploySitDate, label: 'SIT' },
+                            { stage: 'uat', date: group.jiras[0].deployUatDate, label: 'UAT' },
+                            { stage: 'preprod', date: group.jiras[0].deployPreprodDate, label: 'PRE' },
+                            { stage: 'prod', date: group.jiras[0].deployProdDate, label: 'PROD' }
+                          ].filter(deployment => deployment.date);
 
-                        // Group deployments by date to handle overlapping
-                        const deploymentsByDate = {};
-                        deployments.forEach(deployment => {
-                          const dateKey = new Date(deployment.date).toDateString();
-                          if (!deploymentsByDate[dateKey]) {
-                            deploymentsByDate[dateKey] = [];
-                          }
-                          deploymentsByDate[dateKey].push(deployment);
-                        });
+                          // Group deployments by date to handle overlapping
+                          const deploymentsByDate = {};
+                          deployments.forEach(deployment => {
+                            const dateKey = new Date(deployment.date).toDateString();
+                            if (!deploymentsByDate[dateKey]) {
+                              deploymentsByDate[dateKey] = [];
+                            }
+                            deploymentsByDate[dateKey].push(deployment);
+                          });
 
-                        return Object.entries(deploymentsByDate).map(([dateKey, deploymentsOnDate]) => {
-                          const position = getDeploymentPosition(deploymentsOnDate[0].date, timelineData.timelineStart, timelineData.timelineEnd);
+                          return Object.entries(deploymentsByDate).map(([dateKey, deploymentsOnDate]) => {
+                            const position = getDeploymentPosition(deploymentsOnDate[0].date, timelineData.timelineStart, timelineData.timelineEnd);
+                            
+                            return (
+                              <div
+                                key={dateKey}
+                                className="absolute flex flex-col items-center"
+                                style={{ left: `${position}%`, transform: 'translateX(-50%)', top: '4px' }}
+                              >
+                                {/* Stack multiple deployments vertically */}
+                                <div className="flex flex-col items-center space-y-1">
+                                  {deploymentsOnDate.map((deployment, index) => (
+                                    <div 
+                                      key={deployment.stage}
+                                      className={`w-3 h-3 rounded-full ${getDeploymentColor(deployment.stage)} border-2 border-white shadow`}
+                                      title={`${deployment.label}: ${new Date(deployment.date).toLocaleDateString('en-GB')}`}
+                                    />
+                                  ))}
+                                </div>
+                                {/* Show combined labels */}
+                                <div className="text-xs text-gray-600 mt-1 font-medium text-center">
+                                  {deploymentsOnDate.map(d => d.label).join('+')}
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()
+                      ) : (
+                        // Show "No Timeline" text and daily logs
+                        <>
+                          {/* No timeline watermark */}
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-gray-300 text-sm font-light">No deployment timeline</span>
+                          </div>
                           
-                          return (
-                            <div
-                              key={dateKey}
-                              className="absolute flex flex-col items-center"
-                              style={{ left: `${position}%`, transform: 'translateX(-50%)', top: '4px' }}
-                            >
-                              {/* Stack multiple deployments vertically */}
-                              <div className="flex flex-col items-center space-y-1">
-                                {deploymentsOnDate.map((deployment, index) => (
-                                  <div 
-                                    key={deployment.stage}
-                                    className={`w-3 h-3 rounded-full ${getDeploymentColor(deployment.stage)} border-2 border-white shadow`}
-                                    title={`${deployment.label}: ${new Date(deployment.date).toLocaleDateString('en-GB')}`}
-                                  />
-                                ))}
+                          {/* Daily log markers */}
+                          {group.jiras[0].dailyLogs && group.jiras[0].dailyLogs.map((log, logIndex) => {
+                            const logDate = new Date(log.logDate);
+                            const position = getDeploymentPosition(logDate, timelineData.timelineStart, timelineData.timelineEnd);
+                            
+                            return (
+                              <div
+                                key={logIndex}
+                                className="absolute flex flex-col items-center"
+                                style={{ left: `${position}%`, transform: 'translateX(-50%)', top: '8px' }}
+                              >
+                                <div 
+                                  className="w-2 h-2 rounded-full bg-gray-400 border border-white shadow-sm"
+                                  title={`${logDate.toLocaleDateString('en-GB')}: ${log.taskDescription} (${log.timeSpent}h)`}
+                                />
                               </div>
-                              {/* Show combined labels */}
-                              <div className="text-xs text-gray-600 mt-1 font-medium text-center">
-                                {deploymentsOnDate.map(d => d.label).join('+')}
-                              </div>
-                            </div>
-                          );
-                        });
-                      })()}
+                            );
+                          })}
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -414,7 +448,7 @@ const ProjectTimeline = ({ allJiras }) => {
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="font-mono text-sm text-blue-600">{jira.jiraNumber}</div>
-                          <div className="text-xs text-gray-600 truncate">{jira.description}</div>
+                          <div className="text-xs text-gray-600">{jira.description}</div>
                           {/* Show assignee only for project view */}
                           {viewMode === 'project' && (
                             <div className="text-xs text-gray-500">{jira.assignee}</div>
@@ -428,8 +462,8 @@ const ProjectTimeline = ({ allJiras }) => {
                     </div>
                     
                     {/* JIRA Timeline */}
-                    <div className="flex-1 p-3 relative">
-                      <div className="relative h-6">
+                    <div className="flex-1 p-3 relative overflow-x-auto">
+                      <div className="relative h-6 min-w-[600px]">
                         {/* Month dividers for JIRA level */}
                         {timelineData.timelineMonths.map((month, index) => {
                           if (index === 0) return null; // Skip first month
@@ -454,69 +488,99 @@ const ProjectTimeline = ({ allJiras }) => {
                           }}
                         ></div>
                         
-                        {/* Deployment markers */}
-                        {(() => {
-                          const deployments = [
-                            { stage: 'sit', date: jira.deploySitDate, label: 'SIT' },
-                            { stage: 'uat', date: jira.deployUatDate, label: 'UAT' },
-                            { stage: 'preprod', date: jira.deployPreprodDate, label: 'PRE' },
-                            { stage: 'prod', date: jira.deployProdDate, label: 'PROD' }
-                          ].filter(deployment => deployment.date);
+                        {/* Deployment markers or daily logs */}
+                        {hasDeploymentDates(jira) ? (
+                          // Show deployment markers
+                          (() => {
+                            const deployments = [
+                              { stage: 'sit', date: jira.deploySitDate, label: 'SIT' },
+                              { stage: 'uat', date: jira.deployUatDate, label: 'UAT' },
+                              { stage: 'preprod', date: jira.deployPreprodDate, label: 'PRE' },
+                              { stage: 'prod', date: jira.deployProdDate, label: 'PROD' }
+                            ].filter(deployment => deployment.date);
 
-                          // Group deployments by date to handle overlapping
-                          const deploymentsByDate = {};
-                          deployments.forEach(deployment => {
-                            const dateKey = new Date(deployment.date).toDateString();
-                            if (!deploymentsByDate[dateKey]) {
-                              deploymentsByDate[dateKey] = [];
-                            }
-                            deploymentsByDate[dateKey].push(deployment);
-                          });
+                            // Group deployments by date to handle overlapping
+                            const deploymentsByDate = {};
+                            deployments.forEach(deployment => {
+                              const dateKey = new Date(deployment.date).toDateString();
+                              if (!deploymentsByDate[dateKey]) {
+                                deploymentsByDate[dateKey] = [];
+                              }
+                              deploymentsByDate[dateKey].push(deployment);
+                            });
 
-                          return Object.entries(deploymentsByDate).map(([dateKey, deploymentsOnDate]) => {
-                            const position = getDeploymentPosition(deploymentsOnDate[0].date, timelineData.timelineStart, timelineData.timelineEnd);
+                            return Object.entries(deploymentsByDate).map(([dateKey, deploymentsOnDate]) => {
+                              const position = getDeploymentPosition(deploymentsOnDate[0].date, timelineData.timelineStart, timelineData.timelineEnd);
+                              
+                              if (deploymentsOnDate.length === 1) {
+                                // Single deployment - show normally
+                                const deployment = deploymentsOnDate[0];
+                                return (
+                                  <div
+                                    key={dateKey}
+                                    className="absolute flex flex-col items-center"
+                                    style={{ left: `${position}%`, transform: 'translateX(-50%)' }}
+                                  >
+                                    <div 
+                                      className={`w-3 h-3 rounded-full ${getDeploymentColor(deployment.stage)} border-2 border-white shadow`}
+                                      title={`${deployment.label}: ${new Date(deployment.date).toLocaleDateString('en-GB')}`}
+                                    ></div>
+                                    <div className="text-xs text-gray-600 mt-1 font-medium">{deployment.label}</div>
+                                  </div>
+                                );
+                              } else {
+                                // Multiple deployments on same date - stack horizontally
+                                return (
+                                  <div
+                                    key={dateKey}
+                                    className="absolute flex flex-col items-center"
+                                    style={{ left: `${position}%`, transform: 'translateX(-50%)' }}
+                                  >
+                                    <div className="flex items-center space-x-1">
+                                      {deploymentsOnDate.map((deployment, index) => (
+                                        <div 
+                                          key={deployment.stage}
+                                          className={`w-3 h-3 rounded-full ${getDeploymentColor(deployment.stage)} border-2 border-white shadow`}
+                                          title={`${deployment.label}: ${new Date(deployment.date).toLocaleDateString('en-GB')}`}
+                                        />
+                                      ))}
+                                    </div>
+                                    <div className="text-xs text-gray-600 mt-1 font-medium text-center">
+                                      {deploymentsOnDate.map(d => d.label).join('+')}
+                                    </div>
+                                  </div>
+                                );
+                              }
+                            });
+                          })()
+                        ) : (
+                          // Show "No Timeline" text and daily logs
+                          <>
+                            {/* No timeline watermark */}
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-gray-300 text-xs font-light">No deployment timeline</span>
+                            </div>
                             
-                            if (deploymentsOnDate.length === 1) {
-                              // Single deployment - show normally
-                              const deployment = deploymentsOnDate[0];
+                            {/* Daily log markers */}
+                            {jira.dailyLogs && jira.dailyLogs.map((log, logIndex) => {
+                              const logDate = new Date(log.logDate);
+                              const position = getDeploymentPosition(logDate, timelineData.timelineStart, timelineData.timelineEnd);
+                              
                               return (
                                 <div
-                                  key={dateKey}
+                                  key={logIndex}
                                   className="absolute flex flex-col items-center"
-                                  style={{ left: `${position}%`, transform: 'translateX(-50%)' }}
+                                  style={{ left: `${position}%`, transform: 'translateX(-50%)', top: '4px' }}
                                 >
                                   <div 
-                                    className={`w-3 h-3 rounded-full ${getDeploymentColor(deployment.stage)} border-2 border-white shadow`}
-                                    title={`${deployment.label}: ${new Date(deployment.date).toLocaleDateString('en-GB')}`}
-                                  ></div>
-                                  <div className="text-xs text-gray-600 mt-1 font-medium">{deployment.label}</div>
+                                    className="w-2 h-2 rounded-full bg-gray-400 border border-white shadow-sm"
+                                    title={`${logDate.toLocaleDateString('en-GB')}: ${log.taskDescription} (${log.timeSpent}h)`}
+                                  />
                                 </div>
                               );
-                            } else {
-                              // Multiple deployments on same date - stack horizontally
-                              return (
-                                <div
-                                  key={dateKey}
-                                  className="absolute flex flex-col items-center"
-                                  style={{ left: `${position}%`, transform: 'translateX(-50%)' }}
-                                >
-                                  <div className="flex items-center space-x-1">
-                                    {deploymentsOnDate.map((deployment, index) => (
-                                      <div 
-                                        key={deployment.stage}
-                                        className={`w-3 h-3 rounded-full ${getDeploymentColor(deployment.stage)} border-2 border-white shadow`}
-                                        title={`${deployment.label}: ${new Date(deployment.date).toLocaleDateString('en-GB')}`}
-                                      />
-                                    ))}
-                                  </div>
-                                  <div className="text-xs text-gray-600 mt-1 font-medium text-center">
-                                    {deploymentsOnDate.map(d => d.label).join('+')}
-                                  </div>
-                                </div>
-                              );
-                            }
-                          });
-                        })()}
+                            })}
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -546,6 +610,10 @@ const ProjectTimeline = ({ allJiras }) => {
             <div className="flex items-center">
               <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
               <span className="text-gray-600">PROD</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-2 h-2 rounded-full bg-gray-400 mr-2"></div>
+              <span className="text-gray-600">Daily Log</span>
             </div>
           </div>
           <div className="flex items-center text-sm text-gray-600">
