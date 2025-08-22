@@ -4,11 +4,7 @@
 import React, { useMemo } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChartPie, faLightbulb, faStar, faProjectDiagram, faCogs } from '@fortawesome/free-solid-svg-icons';
-
-const getAvatarUrl = (username) => {
-    if (!username) return 'https://placehold.co/24x24/cccccc/ffffff?text=NA';
-    return `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(username)}`;
-};
+import { Avatar } from '@/components/ui';
 
 const TeamRetrospective = ({ teamData }) => {
     const retroData = useMemo(() => {
@@ -137,7 +133,11 @@ const TeamRetrospective = ({ teamData }) => {
                     </div>
                     {retroData.mostActiveMember.name ? (
                         <>
-                            <img src={getAvatarUrl(retroData.mostActiveMember.name)} alt="avatar" className="w-16 h-16 rounded-full mx-auto mb-2 border-2 border-yellow-400"/>
+                            <Avatar
+                                username={retroData.mostActiveMember.name}
+                                size={64}
+                                className="w-16 h-16 mx-auto mb-2 border-2 border-yellow-400"
+                            />
                             <div className="font-bold text-lg text-black">{retroData.mostActiveMember.name}</div>
                             <div className="text-gray-600 text-sm">{retroData.mostActiveMember.hours.toFixed(1)} hours logged</div>
                         </>

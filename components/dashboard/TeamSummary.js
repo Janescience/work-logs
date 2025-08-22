@@ -2,27 +2,8 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faUsers, 
-  faCalendarCheck, 
-  faFire, 
-  faExclamationTriangle, 
-  faChartLine,
-  faClock,
-  faTasks,
-  faUserClock,
-  faRocket,
-  faCheckCircle,
-  faHourglassHalf,
-  faChartPie
-} from '@fortawesome/free-solid-svg-icons';
 import { useWorkingDays } from '@/hooks/useWorkingDays';
-
-const getAvatarUrl = (username) => {
-  if (!username) return 'https://placehold.co/40x40/e5e7eb/6b7280?text=NA';
-  return `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(username)}&size=40`;
-};
+import { Avatar } from '@/components/ui';
 
 const WeeklyActivityGrid = ({ teamData }) => {
   const [hoveredActivity, setHoveredActivity] = React.useState(null);
@@ -109,7 +90,7 @@ const WeeklyActivityGrid = ({ teamData }) => {
                 userActivities[username] = {
                   username: memberInfo.username,
                   initials: getInitials(memberInfo.username),
-                  avatar: getAvatarUrl(memberInfo.username),
+                  avatar: memberInfo.username,
                   totalHours: 0,
                   activities: []
                 };
@@ -199,10 +180,10 @@ const WeeklyActivityGrid = ({ teamData }) => {
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1">
-                              <img 
-                                src={userActivity.avatar} 
-                                alt={userActivity.username}
-                                className="w-4 h-4 rounded-full"
+                              <Avatar
+                                username={userActivity.avatar}
+                                size={16}
+                                className="w-4 h-4"
                               />
                               <span className="font-medium text-gray-800 text-xs">
                                 {userActivity.initials}
@@ -586,10 +567,10 @@ const TeamSummary = ({ teamData }) => {
               <div key={member.username} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-lg font-light text-gray-500 w-6">{index + 1}</span>
-                  <img 
-                    src={getAvatarUrl(member.username)} 
-                    alt={member.username}
-                    className="w-8 h-8 rounded-full"
+                  <Avatar
+                    username={member.username}
+                    size={32}
+                    className="w-8 h-8"
                   />
                   <div>
                     <div className="text-sm font-medium text-black">{member.username}</div>
@@ -659,10 +640,10 @@ const TeamSummary = ({ teamData }) => {
               {summary.blockedTasks.slice(0, 5).map(task => (
                 <div key={task._id} className="flex items-center justify-between p-3 border border-gray-200">
                   <div className="flex items-center gap-3 flex-1">
-                    <img 
-                      src={getAvatarUrl(task.assignee)} 
-                      alt={task.assignee}
-                      className="w-8 h-8 rounded-full"
+                    <Avatar
+                      username={task.assignee}
+                      size={32}
+                      className="w-8 h-8"
                     />
                     <div className="flex-1">
                       <div className="flex items-center gap-2">

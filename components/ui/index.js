@@ -12,3 +12,4 @@ export { default as TabNavigation } from './TabNavigation';
 export { default as SummaryTable } from './SummaryTable';
 export { default as MemberCard } from './MemberCard';
 export { default as TeamGrid } from './TeamGrid';
+export { default as Avatar } from './Avatar';

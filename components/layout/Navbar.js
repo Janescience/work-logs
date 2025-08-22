@@ -9,12 +9,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
     faHome, faCalendarDays, faProjectDiagram, faCog, faTasks
 } from '@fortawesome/free-solid-svg-icons';
-
-// Function to generate DiceBear avatar URL based on username
-const getAvatarUrl = (username) => {
-    if (!username) return 'https://placehold.co/32x32/cccccc/ffffff?text=NA';
-    return `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(username)}`;
-};
+import { Avatar } from '@/components/ui';
 
 export default function Navbar() {
     const { data: session, status } = useSession();
@@ -212,11 +207,10 @@ export default function Navbar() {
                                     )}
                                 </div>
                                 {session.user.name && (
-                                    <img
-                                        src={getAvatarUrl(session.user.name)}
-                                        alt={`${session.user.name}'s avatar`}
-                                        className="w-8 h-8 object-cover"
-                                        onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/32x32/000000/ffffff?text=U'; }}
+                                    <Avatar
+                                        username={session.user.name}
+                                        size={32}
+                                        className="w-8 h-8"
                                     />
                                 )}
                                 <button
@@ -262,11 +256,10 @@ export default function Navbar() {
                                 )}
                             </div>
                             {session.user.name && (
-                                <img
-                                    src={getAvatarUrl(session.user.name)}
-                                    alt={`${session.user.name}'s avatar`}
-                                    className="w-8 h-8 object-cover"
-                                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/32x32/000000/ffffff?text=U'; }}
+                                <Avatar
+                                    username={session.user.name}
+                                    size={32}
+                                    className="w-8 h-8"
                                 />
                             )}
                         </div>

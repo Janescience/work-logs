@@ -1,6 +1,5 @@
 import React from 'react';
-
-const getAvatarUrl = (username) => `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(username)}`;
+import Avatar from './Avatar';
 
 const MemberCard = ({
   member,
@@ -19,10 +18,10 @@ const MemberCard = ({
       } ${className}`}
       onClick={onClick}
     >
-      <img
-        src={getAvatarUrl(member.user.username)}
-        alt="avatar"
-        className="mr-4 h-10 w-10 rounded-full"
+      <Avatar
+        username={member.user.username}
+        size={40}
+        className="mr-4 h-10 w-10"
       />
       <div className="flex-grow">
         <div className="font-semibold uppercase text-black">

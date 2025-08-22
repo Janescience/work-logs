@@ -19,13 +19,8 @@ import { MyJiras } from '@/components/jira';
 import { WorkCalendar } from '@/components/calendar';
 import { TeamSummary } from '@/components/dashboard';
 import { TeamTimeline } from '@/components/calendar';
-import { PageHeader, Button, Input, Select } from '@/components/ui';
+import { PageHeader, Button, Input, Select, Avatar } from '@/components/ui';
 import { useWorkingDays } from '@/hooks/useWorkingDays';
-
-const getAvatarUrl = (username) => {
-  if (!username) return 'https://placehold.co/40x40/e5e7eb/6b7280?text=NA';
-  return `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(username)}&size=40`;
-};
 
 export default function MyTeamPage() {
   const { data: session, status } = useSession();
@@ -587,10 +582,10 @@ export default function MyTeamPage() {
                         }}
                       >
                         <div className="flex items-center gap-4">
-                          <img 
-                            src={getAvatarUrl(memberInfo.username)} 
-                            alt={memberInfo.username}
-                            className="w-12 h-12 rounded-full border-2 border-gray-200"
+                          <Avatar
+                            username={memberInfo.username}
+                            size={48}
+                            className="w-12 h-12 border-2 border-gray-200"
                           />
                           <div>
                             <h3 className="font-semibold text-gray-900">
@@ -945,10 +940,10 @@ export default function MyTeamPage() {
                           onChange={() => handleMemberSelect(member._id)} 
                           className="mr-3 h-4 w-4 text-black focus:ring-black border-gray-300 rounded" 
                         />
-                        <img 
-                          src={getAvatarUrl(member.username)} 
-                          alt={member.username} 
-                          className="w-8 h-8 rounded-full mr-3" 
+                        <Avatar
+                          username={member.username}
+                          size={32}
+                          className="w-8 h-8 mr-3"
                         />
                         <div className="flex-1">
                           <div className="text-sm font-medium text-gray-900">{member.username}</div>

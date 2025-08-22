@@ -4,11 +4,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAdminRequired } from '@/hooks/auth';
 import { toast } from 'react-toastify';
-import { LoadingSpinner, PageHeader, Select, ErrorMessage } from '@/components/ui';
+import { LoadingSpinner, PageHeader, Select, ErrorMessage, Avatar } from '@/components/ui';
 import { get, put, handleFormSubmission } from '@/utils/apiHelpers';
 import { formatDate } from '@/utils/formatters';
-
-const getAvatarUrl = (username) => `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(username)}`;
 
 export default function ManageRolesPage() {
     const { session, status } = useAdminRequired();
@@ -123,7 +121,11 @@ export default function ManageRolesPage() {
                             {users.map(user => (
                                 <div key={user.id} className={`p-4 border-b border-gray-200 ${updatingUserId === user.id ? 'opacity-50' : ''}`}>
                                     <div className="flex items-center mb-3">
-                                        <img className="h-10 w-10 rounded-full" src={getAvatarUrl(user.username)} alt="" />
+                                        <Avatar
+                                            username={user.username}
+                                            size={40}
+                                            className="h-10 w-10"
+                                        />
                                         <div className="ml-3">
                                             <div className="text-sm font-semibold text-gray-900">{user.username.toUpperCase()}</div>
                                             <div className="text-sm text-gray-500">{user.name}</div>
@@ -199,7 +201,11 @@ export default function ManageRolesPage() {
                                 <tr key={user.id} className={updatingUserId === user.id ? 'opacity-50' : ''}>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
-                                            <img className="h-10 w-10 rounded-full" src={getAvatarUrl(user.username)} alt="" />
+                                            <Avatar
+                                            username={user.username}
+                                            size={40}
+                                            className="h-10 w-10"
+                                        />
                                             <div className="ml-4">
                                                 <div className="text-sm font-semibold text-gray-900">{user.username.toUpperCase()}</div>
                                                 <div className="text-sm text-gray-500">{user.name}</div>
