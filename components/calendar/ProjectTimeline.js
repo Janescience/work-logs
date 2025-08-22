@@ -412,23 +412,39 @@ const ProjectTimeline = ({ allJiras }) => {
                           </div>
                           
                           {/* Daily log markers */}
-                          {group.jiras[0].dailyLogs && group.jiras[0].dailyLogs.map((log, logIndex) => {
-                            const logDate = new Date(log.logDate);
-                            const position = getDeploymentPosition(logDate, timelineData.timelineStart, timelineData.timelineEnd);
-                            
-                            return (
-                              <div
-                                key={logIndex}
-                                className="absolute flex flex-col items-center"
-                                style={{ left: `${position}%`, transform: 'translateX(-50%)', top: '8px' }}
-                              >
-                                <div 
-                                  className="w-2 h-2 rounded-full bg-gray-400 border border-white shadow-sm"
-                                  title={`${logDate.toLocaleDateString('en-GB')}: ${log.taskDescription} (${log.timeSpent}h)`}
-                                />
-                              </div>
-                            );
-                          })}
+                          {group.jiras[0].dailyLogs && (() => {
+                            // Group logs by date for better spacing
+                            const logsByDate = {};
+                            group.jiras[0].dailyLogs.forEach((log, logIndex) => {
+                              const dateKey = new Date(log.logDate).toDateString();
+                              if (!logsByDate[dateKey]) {
+                                logsByDate[dateKey] = [];
+                              }
+                              logsByDate[dateKey].push(log);
+                            });
+
+                            return Object.entries(logsByDate).map(([dateKey, logsOnDate]) => {
+                              const logDate = new Date(logsOnDate[0].logDate);
+                              const position = getDeploymentPosition(logDate, timelineData.timelineStart, timelineData.timelineEnd);
+                              
+                              const tooltipText = logsOnDate.map(log => 
+                                `${log.taskDescription} (${log.timeSpent}h)`
+                              ).join('\n');
+                              
+                              return (
+                                <div
+                                  key={dateKey}
+                                  className="absolute flex flex-col items-center"
+                                  style={{ left: `${position}%`, transform: 'translateX(-50%)', top: '8px' }}
+                                >
+                                  <div 
+                                    className="w-3 h-3 rounded-full bg-gray-400 border border-white shadow-sm"
+                                    title={`${logDate.toLocaleDateString('en-GB')}:\n${tooltipText}`}
+                                  />
+                                </div>
+                              );
+                            });
+                          })()}
                         </>
                       )}
                     </>
@@ -576,23 +592,39 @@ const ProjectTimeline = ({ allJiras }) => {
                             </div>
                             
                             {/* Daily log markers */}
-                            {jira.dailyLogs && jira.dailyLogs.map((log, logIndex) => {
-                              const logDate = new Date(log.logDate);
-                              const position = getDeploymentPosition(logDate, timelineData.timelineStart, timelineData.timelineEnd);
-                              
-                              return (
-                                <div
-                                  key={logIndex}
-                                  className="absolute flex flex-col items-center"
-                                  style={{ left: `${position}%`, transform: 'translateX(-50%)', top: '4px' }}
-                                >
-                                  <div 
-                                    className="w-2 h-2 rounded-full bg-gray-400 border border-white shadow-sm"
-                                    title={`${logDate.toLocaleDateString('en-GB')}: ${log.taskDescription} (${log.timeSpent}h)`}
-                                  />
-                                </div>
-                              );
-                            })}
+                            {jira.dailyLogs && (() => {
+                              // Group logs by date for better spacing and combined tooltips
+                              const logsByDate = {};
+                              jira.dailyLogs.forEach((log, logIndex) => {
+                                const dateKey = new Date(log.logDate).toDateString();
+                                if (!logsByDate[dateKey]) {
+                                  logsByDate[dateKey] = [];
+                                }
+                                logsByDate[dateKey].push(log);
+                              });
+
+                              return Object.entries(logsByDate).map(([dateKey, logsOnDate]) => {
+                                const logDate = new Date(logsOnDate[0].logDate);
+                                const position = getDeploymentPosition(logDate, timelineData.timelineStart, timelineData.timelineEnd);
+                                
+                                const tooltipText = logsOnDate.map(log => 
+                                  `${log.taskDescription} (${log.timeSpent}h)`
+                                ).join('\n');
+                                
+                                return (
+                                  <div
+                                    key={dateKey}
+                                    className="absolute flex flex-col items-center"
+                                    style={{ left: `${position}%`, transform: 'translateX(-50%)', top: '4px' }}
+                                  >
+                                    <div 
+                                      className="w-3 h-3 rounded-full bg-gray-400 border border-white shadow-sm"
+                                      title={`${logDate.toLocaleDateString('en-GB')}:\n${tooltipText}`}
+                                    />
+                                  </div>
+                                );
+                              });
+                            })()}
                           </>
                         )}
                       </div>
@@ -626,7 +658,7 @@ const ProjectTimeline = ({ allJiras }) => {
               <span className="text-gray-600">PROD</span>
             </div>
             <div className="flex items-center">
-              <div className="w-2 h-2 rounded-full bg-gray-400 mr-2"></div>
+              <div className="w-3 h-3 rounded-full bg-gray-400 mr-2"></div>
               <span className="text-gray-600">Daily Log</span>
             </div>
           </div>
