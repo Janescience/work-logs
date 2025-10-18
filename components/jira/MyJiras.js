@@ -117,15 +117,16 @@ export default function MyJiras({ userEmail, userName, userId, compact = false, 
   // Auto-sync untracked JIRAs
   const syncUntracked = async () => {
     setShowSyncConfirm(false);
-    
-    const untrackedIssues = issues.filter(issue => 
-      !internalJiraNumbers.has(issue.key) && 
+
+    const untrackedIssues = issues.filter(issue =>
+      !internalJiraNumbers.has(issue.key) &&
       !['done', 'closed', 'cancel'].includes(issue.fields.status?.name?.toLowerCase())
     );
 
     setSyncing(true);
     let successCount = 0;
     let errorCount = 0;
+    const successfulKeys = [];
 
     for (const issue of untrackedIssues) {
       try {
@@ -143,6 +144,7 @@ export default function MyJiras({ userEmail, userName, userId, compact = false, 
 
         if (res.ok) {
           successCount++;
+          successfulKeys.push(issue.key);
         } else {
           errorCount++;
         }
@@ -151,13 +153,19 @@ export default function MyJiras({ userEmail, userName, userId, compact = false, 
       }
     }
 
+    // Optimistic update - add successful keys to tracking
+    if (successfulKeys.length > 0) {
+      const updatedInternalJiraNumbers = new Set(internalJiraNumbers);
+      successfulKeys.forEach(key => updatedInternalJiraNumbers.add(key));
+      setInternalJiraNumbers(updatedInternalJiraNumbers);
+    }
+
     setSyncing(false);
     setSyncStats({ new: successCount, existing: errorCount });
-    
+
     if (successCount > 0) {
       toast.success(`Synced ${successCount} JIRAs successfully!`);
-      setHasInitialized(false); // Allow refresh
-      fetchJiras(); // Refresh data
+      // No need to fetchJiras() - optimistic update already done
     }
     if (errorCount > 0) {
       toast.error(`Failed to sync ${errorCount} JIRAs`);
@@ -257,6 +265,11 @@ export default function MyJiras({ userEmail, userName, userId, compact = false, 
 
   // Quick add JIRA to tracking
   const quickAddJira = async (issue) => {
+    // Optimistic update - immediately add to tracking
+    const updatedInternalJiraNumbers = new Set(internalJiraNumbers);
+    updatedInternalJiraNumbers.add(issue.key);
+    setInternalJiraNumbers(updatedInternalJiraNumbers);
+
     try {
       const res = await fetch('/api/jiras', {
         method: 'POST',
@@ -271,11 +284,19 @@ export default function MyJiras({ userEmail, userName, userId, compact = false, 
 
       if (res.ok) {
         toast.success(`Added ${issue.key} to tracking!`);
-        fetchJiras();
+        // No need to fetchJiras() - optimistic update already done
       } else {
+        // Rollback optimistic update on error
+        const rollbackSet = new Set(internalJiraNumbers);
+        rollbackSet.delete(issue.key);
+        setInternalJiraNumbers(rollbackSet);
         throw new Error('Failed to add JIRA');
       }
     } catch (error) {
+      // Rollback optimistic update on error
+      const rollbackSet = new Set(internalJiraNumbers);
+      rollbackSet.delete(issue.key);
+      setInternalJiraNumbers(rollbackSet);
       toast.error(`Failed to add ${issue.key}`);
     }
   };
@@ -344,7 +365,7 @@ export default function MyJiras({ userEmail, userName, userId, compact = false, 
     <tr className="hover:bg-gray-100 transition-colors opacity-75">
       <td className="p-3 w-32">
         <a
-          href={`https://${process.env.JIRA_DOMAIN}/browse/${issue.key}`}
+          href={`https://${process.env.NEXT_PUBLIC_JIRA_DOMAIN}/browse/${issue.key}`}
           target="_blank"
           rel="noopener noreferrer"
           className="font-mono text-sm text-gray-600 hover:underline whitespace-nowrap"
@@ -463,7 +484,7 @@ export default function MyJiras({ userEmail, userName, userId, compact = false, 
                   <tr key={issue.key} className="hover:bg-gray-50 transition-colors">
                     <td className="p-3 w-32">
                       <a
-                        href={`https://${process.env.JIRA_DOMAIN}/browse/${issue.key}`}
+                        href={`https://${process.env.NEXT_PUBLIC_JIRA_DOMAIN}/browse/${issue.key}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="font-mono text-sm text-blue-600 hover:underline whitespace-nowrap"

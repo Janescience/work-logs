@@ -244,7 +244,15 @@ const JiraItem = ({
               <div className="flex-1">
                 {/* Title Row */}
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-mono text-sm text-gray-600 whitespace-nowrap">{jira.jiraNumber}</h3>
+                  <a
+                    href={`https://${process.env.NEXT_PUBLIC_JIRA_DOMAIN}/browse/${jira.jiraNumber}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-sm text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap transition-colors"
+                    title="Open in JIRA"
+                  >
+                    {jira.jiraNumber}
+                  </a>
                   <span className="text-gray-400">•</span>
                   <h3 className="text-sm font-medium text-gray-900 truncate">{truncateDescription(jira.description)}</h3>
                   {jira.envDetail && (
@@ -319,50 +327,55 @@ const JiraItem = ({
                     {recentLogs.map(log => (
                       <div key={log._id} className="group">
                         {editingLogId === log._id ? (
-                          // Edit Mode for Recent Logs - Minimal inline
-                          <div className="flex items-center gap-2 py-1">
+                          // Edit Mode for Recent Logs - Full width layout
+                          <div className="space-y-2 p-3 bg-gray-50 rounded">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="date"
+                                value={editedLogData.logDate?.split('T')[0] || ''}
+                                onChange={(e) => setEditedLogData({...editedLogData, logDate: e.target.value})}
+                                size="sm"
+                                className="w-auto"
+                              />
+                              <Input
+                                type="number"
+                                step="0.5"
+                                value={editedLogData.timeSpent || ''}
+                                onChange={(e) => setEditedLogData({...editedLogData, timeSpent: e.target.value})}
+                                size="sm"
+                                className="w-20"
+                                placeholder="Hours"
+                              />
+                            </div>
                             <Input
-                              type="date"
-                              value={editedLogData.logDate?.split('T')[0] || ''}
-                              onChange={(e) => setEditedLogData({...editedLogData, logDate: e.target.value})}
-                              size="sm"
-                              className="w-24"
-                            />
-                            <Input
-                              type="number"
-                              step="0.5"
-                              value={editedLogData.timeSpent || ''}
-                              onChange={(e) => setEditedLogData({...editedLogData, timeSpent: e.target.value})}
-                              size="sm"
-                              className="w-12"
-                              placeholder="h"
-                            />
-                            <Input
-                              type="text"
+                              as="textarea"
+                              rows={3}
                               value={editedLogData.taskDescription || ''}
                               onChange={(e) => setEditedLogData({...editedLogData, taskDescription: e.target.value})}
                               size="sm"
-                              className="flex-1"
+                              className="w-full"
                               placeholder="Task description"
                             />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={handleSaveEditLog}
-                              title="Save"
-                              className="text-green-600 hover:text-green-800"
-                            >
-                              <FontAwesomeIcon icon={faSave} className="text-xs" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={handleCancelEditLog}
-                              title="Cancel"
-                              className="text-gray-500 hover:text-gray-700"
-                            >
-                              <FontAwesomeIcon icon={faTimes} className="text-xs" />
-                            </Button>
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleSaveEditLog}
+                                title="Save"
+                                className="text-green-600 hover:text-green-800"
+                              >
+                                <FontAwesomeIcon icon={faSave} className="text-xs" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleCancelEditLog}
+                                title="Cancel"
+                                className="text-gray-500 hover:text-gray-700"
+                              >
+                                <FontAwesomeIcon icon={faTimes} className="text-xs" />
+                              </Button>
+                            </div>
                           </div>
                         ) : (
                           // View Mode for Recent Logs
@@ -471,33 +484,34 @@ const JiraItem = ({
         {/* Quick Add Log Form */}
         {showAddLogForm && (
           <form onSubmit={handleQuickAddLog} className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-              <Input
-                type="date"
-                value={quickLogDate}
-                onChange={(e) => setQuickLogDate(e.target.value)}
-                required
-              />
-              <Input
-                type="text"
-                placeholder="What did you do?"
-                value={quickLogDescription}
-                onChange={(e) => setQuickLogDescription(e.target.value)}
-                className="md:col-span-3"
-                required
-              />
-              <div className="flex gap-2">
+            <div className="space-y-3">
+              <div className="flex gap-3">
+                <Input
+                  type="date"
+                  value={quickLogDate}
+                  onChange={(e) => setQuickLogDate(e.target.value)}
+                  className="w-auto"
+                  required
+                />
                 <Input
                   type="number"
                   step="0.5"
                   placeholder="Hours"
                   value={quickLogHours}
                   onChange={(e) => setQuickLogHours(e.target.value)}
-                  className="flex-1"
+                  className="w-24"
                   required
                 />
-                
               </div>
+              <Input
+                as="textarea"
+                rows={4}
+                placeholder="What did you do?"
+                value={quickLogDescription}
+                onChange={(e) => setQuickLogDescription(e.target.value)}
+                className="w-full"
+                required
+              />
               <div className="flex gap-2">
                 <Button
                   type="submit"
@@ -523,50 +537,55 @@ const JiraItem = ({
             {sortedDailyLogs.slice(3).map(log => (
               <div key={log._id} className="group">
                 {editingLogId === log._id ? (
-                  // Edit Mode - Minimal inline
-                  <div className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                  // Edit Mode - Full width layout
+                  <div className="space-y-2 p-3 bg-gray-50 rounded">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="date"
+                        value={editedLogData.logDate?.split('T')[0] || ''}
+                        onChange={(e) => setEditedLogData({...editedLogData, logDate: e.target.value})}
+                        size="sm"
+                        className="w-auto"
+                      />
+                      <Input
+                        type="number"
+                        step="0.5"
+                        value={editedLogData.timeSpent || ''}
+                        onChange={(e) => setEditedLogData({...editedLogData, timeSpent: e.target.value})}
+                        size="sm"
+                        className="w-20"
+                        placeholder="Hours"
+                      />
+                    </div>
                     <Input
-                      type="date"
-                      value={editedLogData.logDate?.split('T')[0] || ''}
-                      onChange={(e) => setEditedLogData({...editedLogData, logDate: e.target.value})}
-                      size="sm"
-                      className="w-24"
-                    />
-                    <Input
-                      type="number"
-                      step="0.5"
-                      value={editedLogData.timeSpent || ''}
-                      onChange={(e) => setEditedLogData({...editedLogData, timeSpent: e.target.value})}
-                      size="sm"
-                      className="w-12"
-                      placeholder="h"
-                    />
-                    <Input
-                      type="text"
+                      as="textarea"
+                      rows={3}
                       value={editedLogData.taskDescription || ''}
                       onChange={(e) => setEditedLogData({...editedLogData, taskDescription: e.target.value})}
                       size="sm"
-                      className="flex-1"
+                      className="w-full"
                       placeholder="Task description"
                     />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleSaveEditLog}
-                      title="Save"
-                      className="text-green-600 hover:text-green-800"
-                    >
-                      <FontAwesomeIcon icon={faSave} className="text-xs" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleCancelEditLog}
-                      title="Cancel"
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      <FontAwesomeIcon icon={faTimes} className="text-xs" />
-                    </Button>
+                    <div className="flex gap-2 justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleSaveEditLog}
+                        title="Save"
+                        className="text-green-600 hover:text-green-800"
+                      >
+                        <FontAwesomeIcon icon={faSave} className="text-xs" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCancelEditLog}
+                        title="Cancel"
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <FontAwesomeIcon icon={faTimes} className="text-xs" />
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   // View Mode

@@ -3,13 +3,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faPlus, 
+import {
+  faPlus,
   faTrash,
   faCalendar,
-  faFileExport, 
+  faFileExport,
   faSearch,
-  faCopy
+  faCopy,
+  faRocket
 } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
 import { Button, Input, Select, LoadingSpinner, PageHeader, ErrorMessage } from '@/components/ui';
@@ -17,6 +18,7 @@ import { Button, Input, Select, LoadingSpinner, PageHeader, ErrorMessage } from 
 import { JiraFormModal, TaskListView } from '@/components/jira';
 import { CalendarModal } from '@/components/calendar';
 import { DailyLogsSummary } from '@/components/dashboard';
+import UpcomingDeploymentsModal from '@/components/modals/UpcomingDeploymentsModal';
 
 import { useJiras, useApiData } from '@/hooks/api';
 import { useModal, useModals } from '@/hooks/ui';
@@ -48,6 +50,7 @@ export default function DailyLogsPage() {
   // Modal states using new hooks
   const jiraFormModal = useModal();
   const calendarModal = useModal();
+  const deploymentsModal = useModal();
   const { modals, openModal, closeModal } = useModals(['exportMenu']);
   
   // Filter states using new hook
@@ -547,8 +550,17 @@ export default function DailyLogsPage() {
                 size="sm"
                 onClick={() => calendarModal.open()}
               >
-                <FontAwesomeIcon icon={faCalendar} className="text-xs mr-2" />              
+                <FontAwesomeIcon icon={faCalendar} className="text-xs mr-2" />
                   Month Summary
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => deploymentsModal.open()}
+              >
+                <FontAwesomeIcon icon={faRocket} className="text-xs mr-2" />
+                Deployments
               </Button>
 
               <Button
@@ -655,6 +667,13 @@ export default function DailyLogsPage() {
         isOpen={calendarModal.isOpen}
         onClose={calendarModal.close}
         allJiras={filteredJiras}
+      />
+
+      {/* Upcoming Deployments Modal */}
+      <UpcomingDeploymentsModal
+        isOpen={deploymentsModal.isOpen}
+        onClose={deploymentsModal.close}
+        allJiras={allJiras}
       />
 
     </div>

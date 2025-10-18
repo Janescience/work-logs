@@ -422,9 +422,9 @@ const FloatingQuickActions = () => {
                 <textarea
                   value={logDescription}
                   onChange={(e) => setLogDescription(e.target.value)}
-                  className="w-full p-3 focus:border-black outline-none transition-colors  rounded-md"
-                  rows="3"
-                  placeholder="Brief description..."
+                  className="w-full p-3 border border-gray-300 focus:border-black outline-none transition-colors rounded-md resize-vertical"
+                  rows="4"
+                  placeholder="What did you do? Describe your work in detail..."
                   disabled={isSubmitting}
                 />
               </div>

@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
-  faSpinner, faProjectDiagram, faUsers, faChartBar
+  faSpinner, faProjectDiagram, faUsers, faChartBar, faExclamationTriangle
 } from '@fortawesome/free-solid-svg-icons';
 import { 
   LoadingSpinner, ErrorMessage, PageHeader, 
@@ -90,267 +90,6 @@ const IndividualSummary = ({ data }) => {
     );
 };
 
-const WorkDoneSummaryTable = ({ summaryData, selectedMonth, selectedYear }) => {
-    // Debug logging
-    console.log('WorkDoneSummaryTable - summaryData:', summaryData);
-    
-    if (!summaryData) {
-        return (
-            <div className="bg-white border border-black">
-                <div className="border-b border-gray-200 p-4">
-                    <h2 className="text-lg font-light text-black">Work Done Summary</h2>
-                </div>
-                <div className="p-6 text-center text-gray-500">
-                    No data available for the selected period
-                    <div className="text-xs text-gray-400 mt-2">
-                        summaryData is {summaryData ? 'available' : 'null/undefined'}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // Process data to create summary by project
-    const projectSummary = {};
-    let totalHours = 0;
-
-    // Try different data structure approaches
-    const dataToProcess = summaryData.individualSummary || summaryData.projectSummary || [];
-    console.log('dataToProcess:', dataToProcess);
-
-    if (summaryData.individualSummary) {
-        // Method 1: Process individualSummary
-        summaryData.individualSummary.forEach(member => {
-            console.log('Processing member:', member);
-            
-            // Check if member has totalHours directly
-            if (member.totalHours) {
-                const memberName = member.user?.username || member.user?.name || 'Unknown Member';
-                if (!projectSummary[memberName]) {
-                    projectSummary[memberName] = 0;
-                }
-                projectSummary[memberName] += member.totalHours;
-                totalHours += member.totalHours;
-            }
-
-            // Check if member has projects
-            member.projects?.forEach(project => {
-                const projectName = project.projectName || project.name || 'Others';
-                const hours = project.totalHours || project.hours || 0;
-                
-                if (!projectSummary[projectName]) {
-                    projectSummary[projectName] = 0;
-                }
-                projectSummary[projectName] += hours;
-                totalHours += hours;
-            });
-        });
-    } else if (summaryData.projectSummary) {
-        // Method 2: Process projectSummary
-        summaryData.projectSummary.forEach(group => {
-            console.log('Processing group:', group);
-            group.projects?.forEach(project => {
-                const projectName = project.name || 'Others';
-                const hours = project.totalHours || project.coreHours + project.nonCoreHours || 0;
-                
-                if (!projectSummary[projectName]) {
-                    projectSummary[projectName] = 0;
-                }
-                projectSummary[projectName] += hours;
-                totalHours += hours;
-            });
-        });
-    }
-
-    console.log('projectSummary:', projectSummary);
-    console.log('totalHours:', totalHours);
-
-    // Convert to array and sort by hours (descending)
-    const sortedProjects = Object.entries(projectSummary)
-        .map(([name, hours]) => ({
-            name,
-            hours,
-            percentage: totalHours > 0 ? (hours / totalHours * 100) : 0
-        }))
-        .sort((a, b) => b.hours - a.hours);
-
-    // Group projects by category
-    const bauProjects = sortedProjects.filter(p => 
-        p.name.toLowerCase().includes('bau') || 
-        p.name.toLowerCase().includes('maintenance')
-    );
-    
-    const otherProjects = sortedProjects.filter(p => 
-        !p.name.toLowerCase().includes('bau') && 
-        !p.name.toLowerCase().includes('maintenance') &&
-        p.name !== 'Others'
-    );
-
-    const uncategorizedProjects = sortedProjects.filter(p => p.name === 'Others');
-
-    const monthName = new Date(0, selectedMonth - 1).toLocaleString('default', { month: 'long' });
-
-    // If no projects found, show debug info
-    if (sortedProjects.length === 0) {
-        return (
-            <div className="bg-white border border-black">
-                <div className="border-b border-gray-200 p-4">
-                    <h2 className="text-lg font-light text-black">
-                        Work Done Summary - {monthName} {selectedYear}
-                    </h2>
-                </div>
-                <div className="p-6 text-center text-gray-500">
-                    No projects found in the data
-                    <div className="text-xs text-gray-400 mt-4 text-left">
-                        <p><strong>Debug Info:</strong></p>
-                        <p>summaryData keys: {summaryData ? Object.keys(summaryData).join(', ') : 'N/A'}</p>
-                        {summaryData?.individualSummary && (
-                            <p>individualSummary length: {summaryData.individualSummary.length}</p>
-                        )}
-                        {summaryData?.projectSummary && (
-                            <p>projectSummary length: {summaryData.projectSummary.length}</p>
-                        )}
-                        <p>Total Hours: {totalHours}</p>
-                        <p>Project Summary: {JSON.stringify(projectSummary, null, 2)}</p>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="bg-white border border-black">
-            <div className="border-b border-gray-200 p-4">
-                <h2 className="text-lg font-light text-black">
-                    Work Done Summary - {monthName} {selectedYear}
-                </h2>
-                <p className="text-sm text-gray-600 mt-1">
-                    Total Hours: {totalHours.toFixed(1)} | Projects: {sortedProjects.length}
-                </p>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="min-w-full">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Project / Task
-                            </th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Hours
-                            </th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                % of Month
-                            </th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                % of Total
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {/* BAU Section */}
-                        {bauProjects.length > 0 && (
-                            <>
-                                <tr className="bg-gray-100">
-                                    <td colSpan="4" className="px-6 py-2 text-sm font-medium text-gray-700 uppercase">
-                                        BAU & Maintenance
-                                    </td>
-                                </tr>
-                                {bauProjects.map((project, index) => (
-                                    <tr key={`bau-${index}`} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 pl-8">
-                                            {project.name}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-900">
-                                            {project.hours.toFixed(1)}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-600">
-                                            {project.percentage.toFixed(2)}%
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-600">
-                                            {project.percentage.toFixed(2)}%
-                                        </td>
-                                    </tr>
-                                ))}
-                            </>
-                        )}
-
-                        {/* Other Projects Section */}
-                        {otherProjects.length > 0 && (
-                            <>
-                                <tr className="bg-gray-100">
-                                    <td colSpan="4" className="px-6 py-2 text-sm font-medium text-gray-700 uppercase">
-                                        Development Projects
-                                    </td>
-                                </tr>
-                                {otherProjects.map((project, index) => (
-                                    <tr key={`dev-${index}`} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 text-sm text-gray-900 pl-8">
-                                            <div className="break-words max-w-sm">
-                                                {project.name}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-900">
-                                            {project.hours.toFixed(1)}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-600">
-                                            {project.percentage.toFixed(2)}%
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-600">
-                                            {project.percentage.toFixed(2)}%
-                                        </td>
-                                    </tr>
-                                ))}
-                            </>
-                        )}
-
-                        {/* Uncategorized Section */}
-                        {uncategorizedProjects.length > 0 && (
-                            <>
-                                <tr className="bg-gray-100">
-                                    <td colSpan="4" className="px-6 py-2 text-sm font-medium text-gray-700 uppercase">
-                                        Others
-                                    </td>
-                                </tr>
-                                {uncategorizedProjects.map((project, index) => (
-                                    <tr key={`other-${index}`} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 pl-8">
-                                            {project.name}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-900">
-                                            {project.hours.toFixed(1)}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-600">
-                                            {project.percentage.toFixed(2)}%
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-600">
-                                            {project.percentage.toFixed(2)}%
-                                        </td>
-                                    </tr>
-                                ))}
-                            </>
-                        )}
-
-                        {/* Total Row */}
-                        <tr className="bg-black text-white font-medium">
-                            <td className="px-6 py-3 text-sm">
-                                TOTAL
-                            </td>
-                            <td className="px-6 py-3 text-sm text-right font-mono">
-                                {totalHours.toFixed(1)}
-                            </td>
-                            <td className="px-6 py-3 text-sm text-right font-mono">
-                                100.00%
-                            </td>
-                            <td className="px-6 py-3 text-sm text-right font-mono">
-                                100.00%
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
-};
 
 // --- Main Page Component ---
 export default function ITLeadSummaryPage() {
@@ -367,7 +106,7 @@ export default function ITLeadSummaryPage() {
         month: new Date().getMonth() + 1,
         year: new Date().getFullYear(),
     });
-    const [activeTab, setActiveTab] = useState('projects'); // projects, teams, summary
+    const [activeTab, setActiveTab] = useState('projects'); // projects, teams
 
     useEffect(() => {
         if (status === 'authenticated') {
@@ -410,6 +149,7 @@ export default function ITLeadSummaryPage() {
             setLoadingChart(false);
         }
     };
+
 
 
    
@@ -479,11 +219,6 @@ export default function ITLeadSummaryPage() {
                                     id: 'teams',
                                     label: 'Teams',
                                     icon: <FontAwesomeIcon icon={faUsers} className="text-xs" />
-                                },
-                                {
-                                    id: 'summary',
-                                    label: 'Work Done Summary',
-                                    icon: <FontAwesomeIcon icon={faChartBar} className="text-xs" />
                                 }
                             ]}
                             activeTab={activeTab}
@@ -715,16 +450,6 @@ export default function ITLeadSummaryPage() {
                                 </div>
                             )}
 
-                            {/* Work Done Summary Tab */}
-                            {activeTab === 'summary' && (
-                                <div className="space-y-6">
-                                    <WorkDoneSummaryTable 
-                                        summaryData={summaryData} 
-                                        selectedMonth={date.month}
-                                        selectedYear={date.year}
-                                    />
-                                </div>
-                            )}
                         </>
                     )}
                 </div>

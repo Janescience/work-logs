@@ -1,71 +1,29 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { 
-  NeedAction, 
-  DashboardStats, 
-  RecentActivity,
-  TaskTimeline,
-  HolidaysDisplay,
-  LoggingTracker
-} from '@/components/dashboard';
-import { MyJiras } from '@/components/jira';
-import { PageHeader } from '@/components/ui';
-
-import { useJiras } from '@/hooks/api';
-import { useSession } from 'next-auth/react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 export default function Home() {
-  const { data: session, status } = useSession();
   const router = useRouter();
-
-  const { allJiras, isLoading: isInitialLoading, error: fetchError } = useJiras();
-  const [isCrudLoading, setIsCrudLoading] = useState(false);
+  const { data: session, status } = useSession();
 
   useEffect(() => {
+    if (status === 'loading') return; // Still loading
+
     if (status === 'unauthenticated') {
       router.push('/login');
+    } else if (session) {
+      // Redirect authenticated users to daily logs
+      router.push('/daily-logs');
     }
-  }, [status, router]);
+  }, [status, session, router]);
 
-  if (!session) {
-    return null;
-  }
-
-  if (fetchError) {
-    return <div className="p-4 bg-white text-red-500 min-h-screen">Error loading data: {fetchError}</div>;
-  }
-
+  // Show loading while redirecting
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto">
-
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200">
-          <div className="px-6 py-6">
-            <PageHeader title="DASHBOARD" />
-          </div>
-        </div>
-
-        {/* Stats Row */}
-        <div className="bg-white border-b border-gray-200">
-          <DashboardStats allJiras={allJiras} />
-        </div>
-
-        <div className="p-4 ">
-          <div className="grid grid-cols-4 gap-4">
-            <div className="col-span-3 row-span-3">
-              <NeedAction allJiras={allJiras} />
-              <TaskTimeline allJiras={allJiras} className="mb-4"/>
-              <MyJiras userEmail={session.user.email} />
-            </div>
-            <div className="overflow-y-auto">
-              <LoggingTracker allJiras={allJiras} className="mb-4"/>
-              <HolidaysDisplay className="mb-4"/>
-              <RecentActivity allJiras={allJiras} />
-            </div>
-          </div>
-        </div>
+    <div className="fixed inset-0 bg-white flex items-center justify-center z-50">
+      <div className="flex flex-col items-center text-black">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-4"></div>
+        <span className="text-lg font-light">Loading...</span>
       </div>
     </div>
   );

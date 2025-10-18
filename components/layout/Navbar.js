@@ -37,7 +37,6 @@ export default function Navbar() {
             groupName: "Daily Logs",
             groupIcon: faTasks,
             items: [
-                { name: "Dashboard", href: "/", icon: faHome },
                 { name: "Daily Logs", href: "/daily-logs", icon: faCalendarDays },
             ]
         },
