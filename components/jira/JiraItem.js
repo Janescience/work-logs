@@ -12,8 +12,8 @@ import { DeployModal, DetailModal } from '@/components/modals';
 import { formatDate } from '@/utils/dateUtils';
 import { Button, Input } from '@/components/ui';
 
-const JiraItem = ({ 
-  jira, 
+const JiraItem = ({
+  jira,
   dateRange,
   onAddLog,
   onEditJira,
@@ -22,7 +22,9 @@ const JiraItem = ({
   rollbackOptimisticLogUpdate,
   deleteOptimisticLog,
   rollbackOptimisticLogDelete,
-  externalStatus
+  externalStatus,
+  readOnly = false,
+  compact = false
 }) => {
   const [showLogs, setShowLogs] = useState(false);
   const [showAddLogForm, setShowAddLogForm] = useState(false);
@@ -233,6 +235,38 @@ const JiraItem = ({
     setModalDetailContent('');
   };
 
+  // Don't show the full component if in compact mode - the CompactTaskListView handles the display
+  if (compact) {
+    return (
+      <div className="p-3 space-y-3">
+        {/* Daily Logs Only */}
+        {sortedDailyLogs.length > 0 ? (
+          <div className="space-y-2">
+            {sortedDailyLogs.map((log) => (
+              <div key={log._id} className="flex items-center justify-between p-2 bg-gray-50 rounded text-xs">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <span className="text-gray-500 shrink-0">
+                    {getDaysAgo(log.logDate)}
+                  </span>
+                  <span className="text-gray-700 truncate">
+                    {log.taskDescription}
+                  </span>
+                </div>
+                <span className="text-gray-600 font-medium shrink-0">
+                  {log.timeSpent}h
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center text-gray-500 text-xs py-2">
+            No logs found
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="group hover:bg-gray-50 transition-all duration-200">
       {/* Main Row */}
@@ -243,38 +277,42 @@ const JiraItem = ({
             <div className="flex items-start gap-3">
               <div className="flex-1">
                 {/* Title Row */}
-                <div className="flex items-center gap-2 mb-1">
-                  <a
-                    href={`https://${process.env.NEXT_PUBLIC_JIRA_DOMAIN}/browse/${jira.jiraNumber}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-mono text-sm text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap transition-colors"
-                    title="Open in JIRA"
-                  >
-                    {jira.jiraNumber}
-                  </a>
-                  <span className="text-gray-400">•</span>
-                  <h3 className="text-sm font-medium text-gray-900 truncate">{truncateDescription(jira.description)}</h3>
-                  {jira.envDetail && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openDetailModal('Environment Detail', jira.envDetail)}
-                      title="View Environment Details"
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <a
+                      href={`https://${process.env.NEXT_PUBLIC_JIRA_DOMAIN}/browse/${jira.jiraNumber}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-sm text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap transition-colors"
+                      title="Open in JIRA"
                     >
-                      <FontAwesomeIcon icon={faServer} size="xs" />
-                    </Button>
-                  )}
-                  {jira.sqlDetail && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openDetailModal('SQL Detail', jira.sqlDetail)}
-                      title="View SQL Details"
-                    >
-                      <FontAwesomeIcon icon={faDatabase} size="xs" />
-                    </Button>
-                  )}
+                      {jira.jiraNumber}
+                    </a>
+                    <span className="text-gray-400 hidden sm:inline">•</span>
+                    <h3 className="text-sm font-medium text-gray-900 truncate min-w-0">{truncateDescription(jira.description)}</h3>
+                  </div>
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    {jira.envDetail && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openDetailModal('Environment Detail', jira.envDetail)}
+                        title="View Environment Details"
+                      >
+                        <FontAwesomeIcon icon={faServer} size="xs" />
+                      </Button>
+                    )}
+                    {jira.sqlDetail && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openDetailModal('SQL Detail', jira.sqlDetail)}
+                        title="View SQL Details"
+                      >
+                        <FontAwesomeIcon icon={faDatabase} size="xs" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Meta Info */}
@@ -329,13 +367,13 @@ const JiraItem = ({
                         {editingLogId === log._id ? (
                           // Edit Mode for Recent Logs - Full width layout
                           <div className="space-y-2 p-3 bg-gray-50 rounded">
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                               <Input
                                 type="date"
                                 value={editedLogData.logDate?.split('T')[0] || ''}
                                 onChange={(e) => setEditedLogData({...editedLogData, logDate: e.target.value})}
                                 size="sm"
-                                className="w-auto"
+                                className="w-full sm:w-auto"
                               />
                               <Input
                                 type="number"
@@ -343,7 +381,7 @@ const JiraItem = ({
                                 value={editedLogData.timeSpent || ''}
                                 onChange={(e) => setEditedLogData({...editedLogData, timeSpent: e.target.value})}
                                 size="sm"
-                                className="w-20"
+                                className="w-full sm:w-20"
                                 placeholder="Hours"
                               />
                             </div>
@@ -379,34 +417,38 @@ const JiraItem = ({
                           </div>
                         ) : (
                           // View Mode for Recent Logs
-                          <div className="flex items-center justify-between group">
-                            <div className="flex items-center gap-2 text-xs text-gray-600 flex-1">
-                              <FontAwesomeIcon icon={faClock} className="text-gray-400" />
-                              <span className="font-medium">{log.timeSpent}h</span>
-                              <span className="text-gray-400">•</span>
-                              <span className="truncate">{log.taskDescription}</span>
-                              <span className="text-gray-400">•</span>
-                              <span className="text-gray-500">{getDaysAgo(log.logDate)}</span>
-                            </div>
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEditLog(log)}
-                                title="Edit log"
-                                className="text-gray-400 hover:text-blue-600"
-                              >
-                                <FontAwesomeIcon icon={faPencil} className="text-xs" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteLog(jira._id, log._id)}
-                                title="Delete log"
-                                className="text-gray-400 hover:text-red-600"
-                              >
-                                <FontAwesomeIcon icon={faTrash} className="text-xs" />
-                              </Button>
+                          <div className="group">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-2 hover:bg-gray-50 rounded">
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs text-gray-600 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <FontAwesomeIcon icon={faClock} className="text-gray-400" />
+                                  <span className="font-medium">{log.timeSpent}h</span>
+                                  <span className="text-gray-500">{getDaysAgo(log.logDate)}</span>
+                                </div>
+                                <div className="text-gray-700 text-sm sm:text-xs break-words">
+                                  {log.taskDescription}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ml-auto sm:ml-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditLog(log)}
+                                  title="Edit log"
+                                  className="text-gray-400 hover:text-blue-600"
+                                >
+                                  <FontAwesomeIcon icon={faPencil} className="text-xs" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteLog(jira._id, log._id)}
+                                  title="Delete log"
+                                  className="text-gray-400 hover:text-red-600"
+                                >
+                                  <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         )}
@@ -485,12 +527,12 @@ const JiraItem = ({
         {showAddLogForm && (
           <form onSubmit={handleQuickAddLog} className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
             <div className="space-y-3">
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <Input
                   type="date"
                   value={quickLogDate}
                   onChange={(e) => setQuickLogDate(e.target.value)}
-                  className="w-auto"
+                  className="w-full sm:w-auto"
                   required
                 />
                 <Input
@@ -499,7 +541,7 @@ const JiraItem = ({
                   placeholder="Hours"
                   value={quickLogHours}
                   onChange={(e) => setQuickLogHours(e.target.value)}
-                  className="w-24"
+                  className="w-full sm:w-24"
                   required
                 />
               </div>
@@ -512,19 +554,21 @@ const JiraItem = ({
                 className="w-full"
                 required
               />
-              <div className="flex gap-2">
-                <Button
-                  type="submit"
-                  variant="primary"
-                >
-                  Save
-                </Button>
+              <div className="flex flex-col sm:flex-row gap-2 justify-end">
                 <Button
                   type="button"
                   variant="secondary"
                   onClick={() => setShowAddLogForm(false)}
+                  className="order-2 sm:order-1"
                 >
                   Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  className="order-1 sm:order-2"
+                >
+                  Save
                 </Button>
               </div>
             </div>
@@ -539,13 +583,13 @@ const JiraItem = ({
                 {editingLogId === log._id ? (
                   // Edit Mode - Full width layout
                   <div className="space-y-2 p-3 bg-gray-50 rounded">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                       <Input
                         type="date"
                         value={editedLogData.logDate?.split('T')[0] || ''}
                         onChange={(e) => setEditedLogData({...editedLogData, logDate: e.target.value})}
                         size="sm"
-                        className="w-auto"
+                        className="w-full sm:w-auto"
                       />
                       <Input
                         type="number"
@@ -553,7 +597,7 @@ const JiraItem = ({
                         value={editedLogData.timeSpent || ''}
                         onChange={(e) => setEditedLogData({...editedLogData, timeSpent: e.target.value})}
                         size="sm"
-                        className="w-20"
+                        className="w-full sm:w-20"
                         placeholder="Hours"
                       />
                     </div>
@@ -589,31 +633,59 @@ const JiraItem = ({
                   </div>
                 ) : (
                   // View Mode
-                  <div className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
-                    <div className="flex items-center gap-3 text-sm">
-                      <span className="font-mono text-xs text-gray-500">{formatDate(log.logDate)}</span>
-                      <span className="font-medium text-black">{log.timeSpent}h</span>
-                      <span className="text-gray-600">{log.taskDescription}</span>
-                    </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditLog(log)}
-                        title="Edit log"
-                        className="text-gray-400 hover:text-blue-600"
-                      >
-                        <FontAwesomeIcon icon={faPencil} className="text-sm" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteLog(jira._id, log._id)}
-                        title="Delete log"
-                        className="text-gray-400 hover:text-red-600"
-                      >
-                        <FontAwesomeIcon icon={faTrash} className="text-sm" />
-                      </Button>
+                  <div className="p-2 hover:bg-gray-50 rounded">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div className="flex flex-col gap-1 text-sm flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-gray-500">{formatDate(log.logDate)}</span>
+                            <span className="font-medium text-black">{log.timeSpent}h</span>
+                          </div>
+                          <div className="flex gap-1 sm:hidden">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditLog(log)}
+                              title="Edit log"
+                              className="text-gray-400 hover:text-blue-600"
+                            >
+                              <FontAwesomeIcon icon={faPencil} className="text-xs" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteLog(jira._id, log._id)}
+                              title="Delete log"
+                              className="text-gray-400 hover:text-red-600"
+                            >
+                              <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="text-gray-600 break-words text-sm">
+                          {log.taskDescription}
+                        </div>
+                      </div>
+                      <div className="hidden sm:flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditLog(log)}
+                          title="Edit log"
+                          className="text-gray-400 hover:text-blue-600"
+                        >
+                          <FontAwesomeIcon icon={faPencil} className="text-sm" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteLog(jira._id, log._id)}
+                          title="Delete log"
+                          className="text-gray-400 hover:text-red-600"
+                        >
+                          <FontAwesomeIcon icon={faTrash} className="text-sm" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
