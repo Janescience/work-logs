@@ -271,11 +271,11 @@ const JiraItem = ({
     <div className="group hover:bg-gray-50 transition-all duration-200">
       {/* Main Row */}
       <div className="p-4">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
           {/* Left Side - Task Info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-start gap-3">
-              <div className="flex-1">
+            <div className="space-y-2">
+              <div className="w-full">
                 {/* Title Row */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -289,7 +289,7 @@ const JiraItem = ({
                       {jira.jiraNumber}
                     </a>
                     <span className="text-gray-400 hidden sm:inline">•</span>
-                    <h3 className="text-sm font-medium text-gray-900 truncate min-w-0">{truncateDescription(jira.description)}</h3>
+                    <h3 className="text-sm font-medium text-gray-900 break-words min-w-0">{jira.description}</h3>
                   </div>
                   <div className="flex items-center gap-1 sm:gap-2">
                     {jira.envDetail && (
@@ -472,17 +472,17 @@ const JiraItem = ({
           </div>
 
           {/* Right Side - Stats & Actions */}
-          <div className="flex items-start gap-4 ml-4">
+          <div className="flex flex-row lg:flex-col lg:items-end items-center justify-between lg:justify-start gap-4 lg:gap-2 lg:ml-4">
             {/* Total Hours */}
             {jiraTotalHours > 0 && (
-              <div className="text-center">
-                <div className="text-2xl font-light text-black">{jiraTotalHours}</div>
+              <div className="text-center lg:text-right">
+                <div className="text-lg lg:text-2xl font-light text-black">{jiraTotalHours}</div>
                 <div className="text-xs text-gray-500">hours</div>
               </div>
             )}
 
             {/* Actions */}
-            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-1 lg:gap-2 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
               <Button
                 variant="ghost"
                 size="sm"
@@ -490,7 +490,7 @@ const JiraItem = ({
                 title="Add Log"
                 className="text-gray-400 hover:text-black"
               >
-                <FontAwesomeIcon icon={faPlus} />
+                <FontAwesomeIcon icon={faPlus} className="text-xs lg:text-sm" />
               </Button>
               <Button
                 variant="ghost"
@@ -499,7 +499,7 @@ const JiraItem = ({
                 title="Deploy"
                 className="text-gray-400 hover:text-black"
               >
-                <FontAwesomeIcon icon={faShareSquare} />
+                <FontAwesomeIcon icon={faShareSquare} className="text-xs lg:text-sm" />
               </Button>
               <Button
                 variant="ghost"
@@ -508,7 +508,7 @@ const JiraItem = ({
                 title="Edit"
                 className="text-gray-400 hover:text-black"
               >
-                <FontAwesomeIcon icon={faPencil} />
+                <FontAwesomeIcon icon={faPencil} className="text-xs lg:text-sm" />
               </Button>
               <Button
                 variant="ghost"
@@ -517,7 +517,7 @@ const JiraItem = ({
                 title="Delete"
                 className="text-gray-400 hover:text-red-600"
               >
-                <FontAwesomeIcon icon={faTrash} />
+                <FontAwesomeIcon icon={faTrash} className="text-xs lg:text-sm" />
               </Button>
             </div>
           </div>
