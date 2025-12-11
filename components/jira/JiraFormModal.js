@@ -263,7 +263,7 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
       <Draggable nodeRef={nodeRef} handle=".modal-handle" cancel=".no-drag">
-        <div ref={nodeRef} className="bg-white w-full max-w-6xl rounded-lg shadow-xl flex flex-col max-h-[90vh]">
+        <div ref={nodeRef} className="bg-white w-[95vw] max-w-none rounded-lg shadow-xl flex flex-col max-h-[95vh]">
           <div className="modal-handle cursor-move px-6 py-4 bg-gray-50 border-b flex justify-between items-center">
             <h3 className="text-xl font-semibold text-gray-900">{isEditMode ? 'Edit Task' : 'New Task'}</h3>
             <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-600 hover:text-black">
@@ -476,28 +476,28 @@ const JiraFormModal = ({ isOpen, onClose, jira, onSaveJira, userEmail }) => {
               </div>
             </div>
 
-            <div className='p-6 grid grid-cols-2 gap-5'>
-                <div>
-                  <Input
-                    label="Environment Detail"
-                    as="textarea"
-                    rows="12"
-                    {...getFieldProps('envDetail')}
-                    placeholder="Environment configurations, variables, etc."
-                    disabled={isSubmitting}
-                    className="w-full min-h-[300px]"
-                  />
-                </div>
-
-                <div>
+            <div className='p-6 space-y-5'>
+                <div className="w-full">
                   <Input
                     label="SQL Detail"
                     as="textarea"
-                    rows="12"
+                    rows="16"
                     {...getFieldProps('sqlDetail')}
                     placeholder="SQL scripts, database changes, etc."
                     disabled={isSubmitting}
-                    className="w-full min-h-[300px]"
+                    className="w-full min-h-[400px]"
+                  />
+                </div>
+
+                <div className="w-full">
+                  <Input
+                    label="Environment Detail"
+                    as="textarea"
+                    rows="16"
+                    {...getFieldProps('envDetail')}
+                    placeholder="Environment configurations, variables, etc."
+                    disabled={isSubmitting}
+                    className="w-full min-h-[400px]"
                   />
                 </div>
             </div>

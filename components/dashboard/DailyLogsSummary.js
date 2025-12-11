@@ -36,7 +36,7 @@ const DailyLogsSummary = ({ stats, externalStatuses = {}, allJiras = [] }) => {
 
     // Count and collect production statuses with descriptions
     const productionJiras = externalStatuses ? Object.entries(externalStatuses)
-      .filter(([jiraNumber, status]) => status && status.toLowerCase().includes('production'))
+      .filter(([jiraNumber, status]) => status && status.toLowerCase().includes('production') && !status.toLowerCase().includes('deployed'))
       .map(([jiraNumber, status]) => {
         const jira = allJiras.find(j => j.jiraNumber === jiraNumber);
         return {
