@@ -10,9 +10,8 @@ import { Input, Select, Button } from '@/components/ui';
 const DeployModal = ({ isOpen, onClose, jira, onDeploySubmit }) => {
     const [deployDate, setDeployDate] = useState(new Date().toISOString().slice(0, 10));
     const [environment, setEnvironment] = useState('PREPROD');
-    const [platform, setPlatform] = useState('Docker');
+    const [platform, setPlatform] = useState('CI/CD');
     const [imageVersion, setImageVersion] = useState('');
-    const [language, setLanguage] = useState('JAVA');
     const [dbSystem, setDbSystem] = useState('MS-SQL Server');
     const [dbName, setDbName] = useState('');
     const [dbSchema, setDbSchema] = useState('dbo');
@@ -26,10 +25,6 @@ const DeployModal = ({ isOpen, onClose, jira, onDeploySubmit }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (platform === 'Docker' && !imageVersion) {
-            toast.error("Image Version is required for Docker platform.");
-            return;
-        }
 
         setIsSubmitting(true);
         const deployData = {
@@ -37,7 +32,6 @@ const DeployModal = ({ isOpen, onClose, jira, onDeploySubmit }) => {
             environment,
             platform,
             imageVersion,
-            language,
             dbSystem: hasSql ? dbSystem : null,
             dbName: hasSql ? dbName : null,
             dbSchema: hasSql ? dbSchema : null,
@@ -61,6 +55,7 @@ const DeployModal = ({ isOpen, onClose, jira, onDeploySubmit }) => {
                 <div className="flex justify-between items-center mb-4 pb-2 border-b">
                     <h2 className="text-2xl font-light text-black">
                         Deploy: <span className="font-semibold">{jira.jiraNumber}</span>
+                        {jira.serviceName && <span className="text-lg text-gray-600 ml-2">({jira.serviceName})</span>}
                     </h2>
                     <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-600 hover:text-black">
                         <FontAwesomeIcon icon={faTimes} size="lg" />
@@ -95,37 +90,18 @@ const DeployModal = ({ isOpen, onClose, jira, onDeploySubmit }) => {
                                 value={platform}
                                 onChange={e => setPlatform(e.target.value)}
                                 options={[
-                                    { value: 'Docker', label: 'Docker' },
-                                    { value: 'AWS ECS', label: 'AWS ECS' },
-                                    { value: 'Windows Server', label: 'Windows Server' }
+                                    { value: 'CI/CD', label: 'CI/CD' },
+                                    { value: 'Manual', label: 'Manual' }
                                 ]}
                                 required
                             />
                         </div>
-                        {platform === 'Docker' && (
-                             <div>
-                                <Input
-                                    label="Image Version"
-                                    value={imageVersion}
-                                    onChange={e => setImageVersion(e.target.value)}
-                                    placeholder="e.g., 2.7.8"
-                                    required
-                                />
-                            </div>
-                        )}
                         <div>
-                            <Select
-                                label="Development Language"
-                                value={language}
-                                onChange={e => setLanguage(e.target.value)}
-                                options={[
-                                    { value: 'JAVA', label: 'JAVA' },
-                                    { value: '.NET', label: '.NET' },
-                                    { value: 'PHP', label: 'PHP' },
-                                    { value: 'Visual Basic', label: 'Visual Basic' },
-                                    { value: 'Other', label: 'Other' }
-                                ]}
-                                required
+                            <Input
+                                label="Version or Tag"
+                                value={imageVersion}
+                                onChange={e => setImageVersion(e.target.value)}
+                                placeholder="e.g., 2.7.8, latest, v1.0.0"
                             />
                         </div>
                     </div>

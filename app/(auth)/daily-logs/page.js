@@ -9,8 +9,7 @@ import {
   faCalendar,
   faSearch,
   faRocket,
-  faCalendarWeek,
-  faProjectDiagram
+  faTasks
 } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
 import { Button, Input, Select, LoadingSpinner, PageHeader, ErrorMessage } from '@/components/ui';
@@ -19,8 +18,7 @@ import { JiraFormModal, TaskListView } from '@/components/jira';
 import { CalendarModal } from '@/components/calendar';
 import { DailyLogsSummary } from '@/components/dashboard';
 import UpcomingDeploymentsModal from '@/components/modals/UpcomingDeploymentsModal';
-import WeeklyReportModal from '@/components/modals/WeeklyReportModal';
-import TimelineModal from '@/components/modals/TimelineModal';
+import InProgressModal from '@/components/modals/InProgressModal';
 
 import { useJiras, useApiData } from '@/hooks/api';
 import { useModal } from '@/hooks/ui';
@@ -53,8 +51,7 @@ export default function DailyLogsPage() {
   const jiraFormModal = useModal();
   const calendarModal = useModal();
   const deploymentsModal = useModal();
-  const weeklyReportModal = useModal();
-  const timelineModal = useModal();
+  const inProgressModal = useModal();
   // Filter states using new hook
   const {
     filteredData: filteredJiras,
@@ -403,23 +400,12 @@ export default function DailyLogsPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => weeklyReportModal.open()}
+              onClick={() => inProgressModal.open()}
               className="flex-1 sm:flex-none justify-center"
             >
-              <FontAwesomeIcon icon={faCalendarWeek} className="text-xs mr-2" />
-              <span className="hidden sm:inline">Weekly Report</span>
-              <span className="sm:hidden">Weekly</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => timelineModal.open()}
-              className="flex-1 sm:flex-none justify-center"
-            >
-              <FontAwesomeIcon icon={faProjectDiagram} className="text-xs mr-2" />
-              <span className="hidden sm:inline">Timeline</span>
-              <span className="sm:hidden">Timeline</span>
+              <FontAwesomeIcon icon={faTasks} className="text-xs mr-2" />
+              <span className="hidden sm:inline">In Progress</span>
+              <span className="sm:hidden">Progress</span>
             </Button>
 
           </div>
@@ -479,19 +465,14 @@ export default function DailyLogsPage() {
         allJiras={allJiras}
       />
 
-      {/* Weekly Report Modal */}
-      <WeeklyReportModal
-        isOpen={weeklyReportModal.isOpen}
-        onClose={weeklyReportModal.close}
+      {/* In Progress Modal */}
+      <InProgressModal
+        isOpen={inProgressModal.isOpen}
+        onClose={inProgressModal.close}
         allJiras={allJiras}
+        externalStatuses={externalStatuses}
       />
 
-      {/* Timeline Modal */}
-      <TimelineModal
-        isOpen={timelineModal.isOpen}
-        onClose={timelineModal.close}
-        allJiras={allJiras}
-      />
 
     </div>
   );

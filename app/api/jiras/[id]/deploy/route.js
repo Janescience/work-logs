@@ -42,7 +42,7 @@ export async function POST(req, { params }) {
         const serviceDetails = await mongoose.connection.db.collection('servicedetails').find({ service: service._id }).toArray();
         const team = await mongoose.connection.db.collection('teams').findOne({ memberIds: { $in: [user._id.toString()] } });
         const currentEnvDetail = serviceDetails.find(d => d.env === deployData.environment) || {};
-        const hasSql = jira.dailyLogs?.some(log => log.sqlDetail && log.sqlDetail.trim() !== '');
+        const hasSql = jira.sqlDetail && jira.sqlDetail.trim() !== '';
 
         // --- 2. Generate DOCX Document ---
         const doc = generateDocx(jira, user, team, deployData, hasSql, currentEnvDetail);
@@ -51,9 +51,8 @@ export async function POST(req, { params }) {
         const zip = new JSZip();
         zip.file(`Request Deployment ${deployData.environment} - ${jira.serviceName}.docx`, docBuffer);
 
-        const sqlScripts = jira.dailyLogs?.map(log => log.sqlDetail).filter(Boolean).join('\n\n-- --------------------------\n\n');
-        if (sqlScripts) {
-            zip.file('SQL Script.sql', sqlScripts);
+        if (jira.sqlDetail && jira.sqlDetail.trim() !== '') {
+            zip.file('SQL Script.sql', jira.sqlDetail);
         }
 
         const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
@@ -209,7 +208,7 @@ function generateDocx(jira, user, team, deployData, hasSql, currentEnvDetail) {
             new TableRow({ 
                 children: [ 
                     dataCell('Department'), 
-                    dataCell(team?.teamName || 'IT Solution Delivery'), 
+                    dataCell('IT Solution Delivery'), 
                     dataCell(''), 
                     dataCell('') 
                 ] 
@@ -231,7 +230,7 @@ function generateDocx(jira, user, team, deployData, hasSql, currentEnvDetail) {
             new TableRow({
                 children: [
                     new TableCell({
-                        children: [createCheckbox(jira.dailyLogs?.length > 0, 'Deployment')],
+                        children: [createCheckbox(true, 'Deployment')],
                         borders: allBorders
                     }),
                     new TableCell({
@@ -245,27 +244,28 @@ function generateDocx(jira, user, team, deployData, hasSql, currentEnvDetail) {
     });
     
     // Get deployment steps
-    const envDetailsText = jira.dailyLogs?.map(log => log.envDetail).filter(Boolean).join('\n');
-    const referFolder = `T:\\Projects\\Deployment\\${jira.jiraNumber}\\Non-AS400\\${new Date(deployData.deployDate).getFullYear()}${(new Date(deployData.deployDate).getMonth() + 1).toString().padStart(2, '0')}\\${jira.jiraNumber} ${jira.description}\\${jira.serviceName}`;
-    
+    const referFolder = `T:\\Projects\\Deployment\\${jira.jiraNumber}\\Non-AS400\\${new Date(deployData.deployDate).getFullYear()}${(new Date(deployData.deployDate).getMonth() + 1).toString().padStart(2, '0')}\\${jira.jiraNumber} ${jira.description}\\${deployData.environment}\\${jira.serviceName}`;
+
     let deploymentSteps = [createP(`Refer folder : ${referFolder}`)];
-    
-    if (deployData.platform === 'Docker') {
+
+    if (deployData.platform === 'CI/CD') {
         const serverIP = currentEnvDetail.server || 'N/A';
         deploymentSteps.push(createP('Remote to server',{ bold: true}));
         deploymentSteps.push(createP(`IP : ${serverIP}`));
         deploymentSteps.push(createP('Edit docker-compose.yml file',{ bold: true}));
         deploymentSteps.push(createP(`image : 172.16.64.13:5000/${jira.serviceName}:${deployData.imageVersion}`, { indent: { left: 1200 } }));
-        
-        if(envDetailsText){
+
+        if(jira.envDetail && jira.envDetail.trim() !== ''){
             deploymentSteps.push(createP('Edit .env file',{ bold: true}));
-            deploymentSteps.push(createP(envDetailsText, {font: 'Courier New'}));
+            deploymentSteps.push(createP(jira.envDetail, {font: 'Courier New'}));
         }
-        
+
         deploymentSteps.push(createP('Run command docker login',{ bold: true}));
         deploymentSteps.push(createP('sudo docker login 172.16.64.13:5000 --username bo-nl-dev01', { indent: { left: 400 } }));
         deploymentSteps.push(createP('Run command start docker',{ bold: true}));
         deploymentSteps.push(createP('sudo docker-compose up -d', { indent: { left: 400 } }));
+    } else if (deployData.platform === 'Manual') {
+        deploymentSteps.push(createP('Manual deployment steps will be provided separately.'));
     }
     
     // Create deployment table
@@ -335,7 +335,7 @@ function generateDocx(jira, user, team, deployData, hasSql, currentEnvDetail) {
                     children: [
                         dataCell([
                             createP('Step :'),
-                            createP(`1. Backup Database (${deployData.dbSystem})`),
+                            createP(`1. Backup Database`),
                             createP('2. Run "SQL Script.sql"')
                         ], { columnSpan: 3 })
                     ]
@@ -380,7 +380,7 @@ function generateDocx(jira, user, team, deployData, hasSql, currentEnvDetail) {
 }
 
 function getPlatformTable(deployData) {
-    const { platform, dbSystem, language } = deployData;
+    const { platform, dbSystem } = deployData;
     
     const allBorders = { 
         top: { style: BorderStyle.SINGLE, size: 1, color: "000000" }, 
@@ -415,53 +415,34 @@ function getPlatformTable(deployData) {
     return new Table({ 
         width: { size: 100, type: WidthType.PERCENTAGE },
         rows: [
-            new TableRow({ 
-                children: [ 
-                    labelCell('Operating System'), 
+            new TableRow({
+                children: [
+                    labelCell('Deployment Type'),
                     checkboxCell([
-                        createCheckbox(platform === 'Windows Server', 'Windows System'),
-                        createCheckbox(platform === 'Docker', 'Unix System')
+                        createCheckbox(platform === 'CI/CD', 'CI/CD Pipeline'),
+                        createCheckbox(platform === 'Manual', 'Manual Deployment')
                     ])
-                ] 
+                ]
             }),
-            new TableRow({ 
-                children: [ 
-                    labelCell('Cloud System'), 
+            new TableRow({
+                children: [
+                    labelCell('Operating System'),
                     checkboxCell([
-                        createCheckbox(platform === 'AWS ECS', 'AWS'),
-                        createP('☐ Azure'),
-                        createP('☐ Google Cloud')
+                        createCheckbox(platform === 'Manual', 'Windows System'),
+                        createCheckbox(platform === 'CI/CD', 'Unix System (Docker)')
                     ])
-                ] 
+                ]
             }),
-            new TableRow({ 
-                children: [ 
-                    labelCell('Middleware System'), 
-                    checkboxCell([
-                        createCheckbox(platform === 'Windows Server', 'Tomcat'),
-                        createCheckbox(platform === 'Docker', 'Other Specify: Docker')
-                    ])
-                ] 
-            }),
-            new TableRow({ 
-                children: [ 
-                    labelCell('Database System'), 
+            new TableRow({
+                children: [
+                    labelCell('Database System'),
                     checkboxCell([
                         createCheckbox(dbSystem === 'MySQL', 'MySQL'),
                         createCheckbox(dbSystem === 'PostgreSQL', 'PostgreSQL'),
-                        createCheckbox(dbSystem === 'MS-SQL Server', 'MS-SQL Server')
+                        createCheckbox(dbSystem === 'MS-SQL Server', 'MS-SQL Server'),
+                        createCheckbox(dbSystem === 'Oracle DB', 'Oracle DB')
                     ])
-                ] 
-            }),
-            new TableRow({ 
-                children: [ 
-                    labelCell('Development Language'), 
-                    checkboxCell([
-                        createCheckbox(language === 'JAVA', 'JAVA'),
-                        createCheckbox(language === '.NET', '.NET'),
-                        createCheckbox(language === 'PHP', 'PHP')
-                    ])
-                ] 
+                ]
             })
         ],
         columnWidths: [3200, 6400]
